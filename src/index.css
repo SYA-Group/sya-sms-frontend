@@ -1,0 +1,129 @@
+/* ------------------------------------------
+   Base Normalization + Tailwind
+------------------------------------------ */
+@import "modern-normalize/modern-normalize.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------
+   Theme Variables
+------------------------------------------ */
+:root {
+  --bg-main-light: #f9fafb;
+  --bg-main-dark: #0f172a;
+  --surface-dark: #1e293b;
+  --surface-light: #ffffff;
+}
+
+/* ------------------------------------------
+   Global Base Styles
+------------------------------------------ */
+@layer base {
+  html {
+    font-family: "Inter", "Segoe UI", Roboto, sans-serif;
+    font-size: 20px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--bg-main-light);
+    color: #111827; /* gray-900 */
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: "Poppins", "Inter", sans-serif;
+  }
+
+  /* Dark mode handled by Tailwind's 'dark' class */
+  .dark body {
+    background-color: var(--bg-main-dark);
+    color: #f3f4f6; /* gray-100 */
+  }
+
+  /* ------------------------------------------
+     Table Normalization
+  ------------------------------------------ */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    /*table-layout: fixed;*/
+  }
+
+  th,
+  td {
+    padding: 1rem;
+    text-align: left;
+    vertical-align: middle;
+    /*white-space: nowrap;*/
+  }
+
+  th {
+    font-weight: 600;
+  }
+
+  /* Fix sticky headers & prevent double borders */
+  thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  /* ------------------------------------------
+     Scrollbar Consistency
+  ------------------------------------------ */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 100, 100, 0.5) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: rgba(100, 100, 100, 0.5);
+    border-radius: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* ------------------------------------------
+   Optional – Card Utility Class
+------------------------------------------ */
+.card {
+  background-color: var(--surface-light);
+  border-radius: 0.75rem; /* rounded-xl */
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); /* shadow-sm */
+}
+
+.dark .card {
+  background-color: var(--surface-dark);
+}
+
+/* ------------------------------------------
+   Section Border Cleanup
+------------------------------------------ */
+div,
+section,
+main,
+aside,
+header,
+footer {
+  border-color: transparent !important;
+}
+
+/* Allow wrapping for specific table cells (e.g., name column) */
+td.wrap {
+  white-space: normal !important;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
