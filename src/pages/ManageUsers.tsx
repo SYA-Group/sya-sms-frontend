@@ -286,9 +286,25 @@ const ManageUsers = () => {
                         : "hover:bg-blue-50 dark:hover:bg-gray-700/50"
                     }`}
                   >
+                    {/* Username */}
                     <td className="p-4 font-semibold text-gray-900 dark:text-gray-100">
-                      {u.username}
+                      {editingUser?.id === u.id ? (
+                        <input
+                          value={editingUser.username}
+                          onChange={(e) =>
+                            setEditingUser({
+                              ...editingUser,
+                              username: e.target.value,
+                            })
+                          }
+                          className="p-1 rounded-md border dark:bg-gray-700 dark:text-gray-100"
+                        />
+                      ) : (
+                        u.username
+                      )}
                     </td>
+
+                    {/* Email */}
                     <td className="p-4 text-gray-800 dark:text-gray-200">
                       {editingUser?.id === u.id ? (
                         <input
@@ -305,6 +321,8 @@ const ManageUsers = () => {
                         u.email
                       )}
                     </td>
+
+                    {/* Company Type */}
                     <td className="p-4 text-gray-800 dark:text-gray-200">
                       {editingUser?.id === u.id ? (
                         <select
@@ -335,12 +353,31 @@ const ManageUsers = () => {
                       )}
                     </td>
 
+                    {/* SMS Quota */}
                     <td className="p-4 text-center text-gray-700 dark:text-gray-300">
-                      {`${u.sms_used} / ${u.sms_quota}`}
+                      {editingUser?.id === u.id ? (
+                        <input
+                          type="number"
+                          value={editingUser.sms_quota}
+                          onChange={(e) =>
+                            setEditingUser({
+                              ...editingUser,
+                              sms_quota: Number(e.target.value),
+                            })
+                          }
+                          className="p-1 rounded-md border text-center dark:bg-gray-700 dark:text-gray-100"
+                        />
+                      ) : (
+                        `${u.sms_used} / ${u.sms_quota}`
+                      )}
                     </td>
+
+                    {/* Admin */}
                     <td className="p-4 text-center">
                       {u.is_admin ? "✅" : "❌"}
                     </td>
+
+                    {/* Suspended */}
                     <td className="p-4 text-center">
                       {u.suspended ? (
                         <span className="px-3 py-1 rounded-full bg-red-200 dark:bg-red-800 text-red-900 dark:text-red-200 font-semibold">
@@ -352,6 +389,8 @@ const ManageUsers = () => {
                         </span>
                       )}
                     </td>
+
+                    {/* Actions */}
                     <td className="p-4 text-center flex justify-center gap-2">
                       {editingUser?.id === u.id ? (
                         <>

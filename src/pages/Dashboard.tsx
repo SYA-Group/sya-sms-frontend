@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { getDashboardStats } from "../api";
 import StatsCard from "../components/StatsCard";
@@ -22,13 +22,21 @@ interface DashboardStats {
   }[];
 }
 
+const PAGE_SIZE = 20;
+
 const Dashboard = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [visibleCount, setVisibleCount] = useState(20);
-  const [isFetchingMore, setIsFetchingMore] = useState(false);
-  const observerRef = useRef<HTMLDivElement | null>(null);
+  const [visibleMessages, setVisibleMessages] = useState<
+    DashboardStats["recent_messages"]
+  >([]);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "sent" | "pending" | "failed"
+  >("all");
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const loadStats = async () => {
     try {
@@ -45,6 +53,13 @@ const Dashboard = () => {
       }
 
       setStats(data);
+      setPage(1);
+
+      const filtered = data.recent_messages.filter(
+        (msg: { status: string }) =>
+          filterStatus === "all" || msg.status.toLowerCase() === filterStatus
+      );
+      setVisibleMessages(filtered.slice(0, PAGE_SIZE));
     } catch (err) {
       console.error("Failed to load stats:", err);
       setError("⚠️ Server is offline. Displaying empty dashboard.");
@@ -52,6 +67,7 @@ const Dashboard = () => {
         summary: { contacts_total: 0, sent: 0, failed: 0, pending: 0 },
         recent_messages: [],
       });
+      setVisibleMessages([]);
     } finally {
       setLoading(false);
     }
@@ -61,28 +77,36 @@ const Dashboard = () => {
     loadStats();
     const interval = setInterval(loadStats, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [filterStatus]);
 
-  const handleObserver = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      const target = entries[0];
-      if (target.isIntersecting && !isFetchingMore) {
-        setIsFetchingMore(true);
+  const handleScroll = () => {
+    if (!stats) return;
+    const container = scrollRef.current;
+    if (!container || loadingMore) return;
+
+    const filteredMessages = stats.recent_messages.filter(
+      (msg) =>
+        filterStatus === "all" || msg.status.toLowerCase() === filterStatus
+    );
+
+    if (
+      container.scrollTop + container.clientHeight >=
+      container.scrollHeight - 10
+    ) {
+      const nextPage = page + 1;
+      const start = page * PAGE_SIZE;
+      const nextMessages = filteredMessages.slice(start, start + PAGE_SIZE);
+
+      if (nextMessages.length > 0) {
+        setLoadingMore(true);
         setTimeout(() => {
-          setVisibleCount((prev) => prev + 20);
-          setIsFetchingMore(false);
-        }, 600);
+          setVisibleMessages((prev) => [...prev, ...nextMessages]);
+          setPage(nextPage);
+          setLoadingMore(false);
+        }, 300);
       }
-    },
-    [isFetchingMore]
-  );
-
-  useEffect(() => {
-    const option = { root: null, rootMargin: "100px", threshold: 0 };
-    const observer = new IntersectionObserver(handleObserver, option);
-    if (observerRef.current) observer.observe(observerRef.current);
-    return () => observer.disconnect();
-  }, [handleObserver]);
+    }
+  };
 
   if (loading) {
     return (
@@ -92,26 +116,23 @@ const Dashboard = () => {
     );
   }
 
-  const { summary, recent_messages } = stats || {
+  const { summary } = stats || {
     summary: { contacts_total: 0, sent: 0, failed: 0, pending: 0 },
-    recent_messages: [],
   };
-
-  const visibleMessages = recent_messages.slice(0, visibleCount);
 
   return (
     <div className="min-h-screen px-4 sm:px-6 lg:px-8 py-6 sm:py-8 bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       <motion.h1
-        className="text-2xl sm:text-3xl font-bold mb-8 text-center sm:text-left text-gray-800 dark:text-white"
+        className="text-2xl sm:text-3xl font-bold mb-4 text-center sm:text-left text-gray-800 dark:text-white"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
         Dashboard Overview
       </motion.h1>
 
-      {/* === Summary Cards === */}
+      {/* === Summary Cards with filter === */}
       <motion.div
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 mb-10 sm:mb-12"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 mb-6 sm:mb-8"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3, duration: 0.6 }}
@@ -127,18 +148,21 @@ const Dashboard = () => {
           value={summary.sent}
           color="bg-green-500"
           icon="send"
+          onClick={() => setFilterStatus("sent")}
         />
         <StatsCard
           title="Failed Messages"
           value={summary.failed}
           color="bg-red-500"
           icon="alert-triangle"
+          onClick={() => setFilterStatus("failed")}
         />
         <StatsCard
           title="Pending Messages"
           value={summary.pending}
           color="bg-yellow-500"
           icon="clock"
+          onClick={() => setFilterStatus("pending")}
         />
       </motion.div>
 
@@ -166,7 +190,11 @@ const Dashboard = () => {
             No messages yet.
           </div>
         ) : (
-          <div className="overflow-x-auto max-h-[600px] scrollbar-thin scrollbar-thumb-gray-400 dark:scrollbar-thumb-gray-700">
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="overflow-x-auto max-h-[600px] scrollbar-thin scrollbar-thumb-gray-400 dark:scrollbar-thumb-gray-700"
+          >
             <table className="w-full text-sm sm:text-base text-gray-800 dark:text-gray-200">
               <thead className="bg-gray-100 dark:bg-gray-700 sticky top-0 z-10">
                 <tr>
@@ -189,21 +217,15 @@ const Dashboard = () => {
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {visibleMessages.map((msg, i) => (
-                  <ExpandableRow key={i} msg={msg} index={i} /> // ✅ replaced motion.tr
+                  <ExpandableRow key={i} msg={msg} index={i} />
                 ))}
               </tbody>
             </table>
-
-            <div
-              ref={observerRef}
-              className="h-16 flex justify-center items-center"
-            >
-              {isFetchingMore && (
-                <div className="text-gray-500 dark:text-gray-300 animate-pulse text-sm sm:text-lg">
-                  Loading more...
-                </div>
-              )}
-            </div>
+            {loadingMore && (
+              <div className="h-16 flex justify-center items-center text-gray-500 dark:text-gray-300 animate-pulse text-sm sm:text-lg">
+                Loading more...
+              </div>
+            )}
           </div>
         )}
       </motion.div>
