@@ -33,9 +33,41 @@ const ContactTable = () => {
   const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
   const [page, setPage] = useState(1);
 
-  // ✅ Load contacts (with sessionStorage cache)
+  // ✅ Load contacts (instant cache + safe storage)
   const loadContacts = async (forceRefresh = false) => {
-    if (!forceRefresh) {
+    try {
+      // --- 1. Use cached data instantly ---
+      if (!forceRefresh) {
+        const cached = sessionStorage.getItem("contacts_cache");
+        if (cached) {
+          try {
+            const data: Contact[] = JSON.parse(cached);
+            setContacts(data);
+            setVisibleContacts(data.slice(0, PAGE_SIZE));
+            setLoading(false);
+          } catch {
+            sessionStorage.removeItem("contacts_cache");
+          }
+        }
+      }
+
+      // --- 2. Refresh in background ---
+      const res = await getContacts();
+      setContacts(res);
+      setVisibleContacts(res.slice(0, PAGE_SIZE));
+      setPage(1);
+
+      // ✅ Store smaller cache (avoid QuotaExceededError)
+      const cacheSafeData = res.slice(0, 200); // cache only first 200
+      try {
+        sessionStorage.setItem("contacts_cache", JSON.stringify(cacheSafeData));
+      } catch (e) {
+        console.warn("⚠️ Contacts cache skipped:", e);
+        sessionStorage.removeItem("contacts_cache");
+      }
+    } catch (err) {
+      console.error("Error loading contacts:", err);
+      // fallback if API fails
       const cached = sessionStorage.getItem("contacts_cache");
       if (cached) {
         try {
@@ -48,17 +80,7 @@ const ContactTable = () => {
           sessionStorage.removeItem("contacts_cache");
         }
       }
-    }
-
-    setLoading(true);
-    try {
-      const res = await getContacts();
-      setContacts(res);
-      setVisibleContacts(res.slice(0, PAGE_SIZE));
-      setPage(1);
-      sessionStorage.setItem("contacts_cache", JSON.stringify(res));
-    } catch (err) {
-      console.error("Error loading contacts:", err);
+      toast.error("⚠️ Failed to load contacts.");
     } finally {
       setLoading(false);
     }
@@ -70,7 +92,11 @@ const ContactTable = () => {
       await deleteContact(id);
       setContacts((prev) => {
         const updated = prev.filter((c) => c.id !== id);
-        sessionStorage.setItem("contacts_cache", JSON.stringify(updated));
+        try {
+          sessionStorage.setItem("contacts_cache", JSON.stringify(updated));
+        } catch (e) {
+          console.warn("⚠️ Cache update skipped:", e);
+        }
         return updated;
       });
       setVisibleContacts((prev) => prev.filter((c) => c.id !== id));
@@ -124,9 +150,11 @@ const ContactTable = () => {
 
   useEffect(() => {
     loadContacts();
+    const interval = setInterval(() => loadContacts(true), 60000); // refresh every 60s
+    return () => clearInterval(interval);
   }, []);
 
-  // ✅ Filter & sort on ALL contacts (fast re-render)
+  // ✅ Filter & sort logic
   const filteredContacts = contacts
     .filter(
       (c) =>

@@ -38,12 +38,12 @@ const Dashboard = () => {
   >("all");
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  // ✅ Enhanced: load with cache first
+  // ✅ Enhanced: load with cache first, safe from quota error
   const loadStats = async (forceRefresh = false) => {
     try {
       setError(null);
 
-      // --- 1. Use cached data for instant render ---
+      // --- 1. Show cached data instantly ---
       if (!forceRefresh) {
         const cached = sessionStorage.getItem("dashboard_cache");
         if (cached) {
@@ -56,14 +56,14 @@ const Dashboard = () => {
                 msg.status.toLowerCase() === filterStatus
             );
             setVisibleMessages(filtered.slice(0, PAGE_SIZE));
-            setLoading(false);
+            setLoading(false); // ✅ show UI immediately
           } catch {
             sessionStorage.removeItem("dashboard_cache");
           }
         }
       }
 
-      // --- 2. Always refresh in background (so data stays fresh) ---
+      // --- 2. Always refresh in background ---
       const data = await getDashboardStats();
       if (
         !data ||
@@ -75,7 +75,18 @@ const Dashboard = () => {
       }
 
       setStats(data);
-      sessionStorage.setItem("dashboard_cache", JSON.stringify(data));
+
+      // ✅ only store lightweight cache (summary + first 50 messages)
+      const cacheSafeData = {
+        summary: data.summary,
+        recent_messages: data.recent_messages.slice(0, 50),
+      };
+      try {
+        sessionStorage.setItem("dashboard_cache", JSON.stringify(cacheSafeData));
+      } catch (e) {
+        console.warn("⚠️ Dashboard cache skipped:", e);
+        sessionStorage.removeItem("dashboard_cache");
+      }
 
       const filtered = data.recent_messages.filter(
         (msg: { status: string }) =>
@@ -87,7 +98,7 @@ const Dashboard = () => {
       console.error("Failed to load stats:", err);
       setError("⚠️ Server is offline. Displaying cached/empty dashboard.");
 
-      // Try fallback from cache even if API fails
+      // --- fallback to cache if network fails ---
       const cached = sessionStorage.getItem("dashboard_cache");
       if (cached) {
         try {
@@ -105,7 +116,7 @@ const Dashboard = () => {
         }
       }
 
-      // fallback empty
+      // --- fallback to empty ---
       setStats({
         summary: { contacts_total: 0, sent: 0, failed: 0, pending: 0 },
         recent_messages: [],
@@ -116,10 +127,10 @@ const Dashboard = () => {
     }
   };
 
-  // ✅ keep auto-refresh but skip full reload if cached data available
+  // ✅ Auto-refresh every 60s (lighter load)
   useEffect(() => {
     loadStats();
-    const interval = setInterval(() => loadStats(true), 10000);
+    const interval = setInterval(() => loadStats(true), 60000);
     return () => clearInterval(interval);
   }, [filterStatus]);
 
@@ -174,7 +185,7 @@ const Dashboard = () => {
         Dashboard Overview
       </motion.h1>
 
-      {/* === Summary Cards with filter === */}
+      {/* === Summary Cards === */}
       <motion.div
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 mb-6 sm:mb-8"
         initial={{ opacity: 0 }}
