@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { getDashboardStats } from "../api";
 import StatsCard from "../components/StatsCard";
-import ExpandableRow from "../components/ExpandableRow"; // ✅ Added import
+import ExpandableRow from "../components/ExpandableRow";
 import "../index.css";
 import "modern-normalize/modern-normalize.css";
 
@@ -38,11 +38,33 @@ const Dashboard = () => {
   >("all");
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  const loadStats = async () => {
+  // ✅ Enhanced: load with cache first
+  const loadStats = async (forceRefresh = false) => {
     try {
       setError(null);
-      const data = await getDashboardStats();
 
+      // --- 1. Use cached data for instant render ---
+      if (!forceRefresh) {
+        const cached = sessionStorage.getItem("dashboard_cache");
+        if (cached) {
+          try {
+            const cachedData: DashboardStats = JSON.parse(cached);
+            setStats(cachedData);
+            const filtered = cachedData.recent_messages.filter(
+              (msg) =>
+                filterStatus === "all" ||
+                msg.status.toLowerCase() === filterStatus
+            );
+            setVisibleMessages(filtered.slice(0, PAGE_SIZE));
+            setLoading(false);
+          } catch {
+            sessionStorage.removeItem("dashboard_cache");
+          }
+        }
+      }
+
+      // --- 2. Always refresh in background (so data stays fresh) ---
+      const data = await getDashboardStats();
       if (
         !data ||
         typeof data !== "object" ||
@@ -53,16 +75,37 @@ const Dashboard = () => {
       }
 
       setStats(data);
-      setPage(1);
+      sessionStorage.setItem("dashboard_cache", JSON.stringify(data));
 
       const filtered = data.recent_messages.filter(
         (msg: { status: string }) =>
           filterStatus === "all" || msg.status.toLowerCase() === filterStatus
       );
       setVisibleMessages(filtered.slice(0, PAGE_SIZE));
+      setPage(1);
     } catch (err) {
       console.error("Failed to load stats:", err);
-      setError("⚠️ Server is offline. Displaying empty dashboard.");
+      setError("⚠️ Server is offline. Displaying cached/empty dashboard.");
+
+      // Try fallback from cache even if API fails
+      const cached = sessionStorage.getItem("dashboard_cache");
+      if (cached) {
+        try {
+          const cachedData: DashboardStats = JSON.parse(cached);
+          setStats(cachedData);
+          const filtered = cachedData.recent_messages.filter(
+            (msg) =>
+              filterStatus === "all" ||
+              msg.status.toLowerCase() === filterStatus
+          );
+          setVisibleMessages(filtered.slice(0, PAGE_SIZE));
+          return;
+        } catch {
+          sessionStorage.removeItem("dashboard_cache");
+        }
+      }
+
+      // fallback empty
       setStats({
         summary: { contacts_total: 0, sent: 0, failed: 0, pending: 0 },
         recent_messages: [],
@@ -73,9 +116,10 @@ const Dashboard = () => {
     }
   };
 
+  // ✅ keep auto-refresh but skip full reload if cached data available
   useEffect(() => {
     loadStats();
-    const interval = setInterval(loadStats, 10000);
+    const interval = setInterval(() => loadStats(true), 10000);
     return () => clearInterval(interval);
   }, [filterStatus]);
 
@@ -108,7 +152,7 @@ const Dashboard = () => {
     }
   };
 
-  if (loading) {
+  if (loading && !stats) {
     return (
       <div className="flex items-center justify-center h-screen text-lg sm:text-xl font-medium text-gray-500 dark:text-gray-300">
         Loading dashboard...

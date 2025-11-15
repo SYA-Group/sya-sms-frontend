@@ -33,13 +33,30 @@ const ContactTable = () => {
   const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
   const [page, setPage] = useState(1);
 
-  const loadContacts = async () => {
+  // ✅ Load contacts (with sessionStorage cache)
+  const loadContacts = async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      const cached = sessionStorage.getItem("contacts_cache");
+      if (cached) {
+        try {
+          const data: Contact[] = JSON.parse(cached);
+          setContacts(data);
+          setVisibleContacts(data.slice(0, PAGE_SIZE));
+          setLoading(false);
+          return;
+        } catch {
+          sessionStorage.removeItem("contacts_cache");
+        }
+      }
+    }
+
     setLoading(true);
     try {
       const res = await getContacts();
       setContacts(res);
       setVisibleContacts(res.slice(0, PAGE_SIZE));
       setPage(1);
+      sessionStorage.setItem("contacts_cache", JSON.stringify(res));
     } catch (err) {
       console.error("Error loading contacts:", err);
     } finally {
@@ -51,7 +68,11 @@ const ContactTable = () => {
     if (!window.confirm("Delete this contact?")) return;
     try {
       await deleteContact(id);
-      setContacts((prev) => prev.filter((c) => c.id !== id));
+      setContacts((prev) => {
+        const updated = prev.filter((c) => c.id !== id);
+        sessionStorage.setItem("contacts_cache", JSON.stringify(updated));
+        return updated;
+      });
       setVisibleContacts((prev) => prev.filter((c) => c.id !== id));
       toast.success("Contact deleted");
     } catch (err) {
@@ -92,7 +113,7 @@ const ContactTable = () => {
     try {
       await addContact({ name: name.trim(), phone: normalizedPhone });
       toast.success("Contact added successfully!");
-      await loadContacts();
+      await loadContacts(true); // force refresh
       setShowModal(false);
       setNewContact({ name: "", phone: "" });
     } catch (err: any) {
@@ -105,7 +126,7 @@ const ContactTable = () => {
     loadContacts();
   }, []);
 
-  // ✅ Filter & sort on ALL contacts
+  // ✅ Filter & sort on ALL contacts (fast re-render)
   const filteredContacts = contacts
     .filter(
       (c) =>
@@ -125,7 +146,6 @@ const ContactTable = () => {
         : String(valB).localeCompare(String(valA));
     });
 
-  // Update visibleContacts when search or sort changes
   useEffect(() => {
     setVisibleContacts(filteredContacts.slice(0, PAGE_SIZE));
     setPage(1);
@@ -140,7 +160,7 @@ const ContactTable = () => {
     }
   };
 
-  const handleScroll = async (e: React.UIEvent<HTMLDivElement>) => {
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
     if (
       target.scrollTop + target.clientHeight >= target.scrollHeight - 10 &&
@@ -160,7 +180,6 @@ const ContactTable = () => {
     }
   };
 
-  // ✅ Export contacts to CSV
   const handleExportCSV = () => {
     if (contacts.length === 0) {
       toast.error("No contacts to export.");
@@ -225,7 +244,7 @@ const ContactTable = () => {
           </div>
 
           <button
-            onClick={loadContacts}
+            onClick={() => loadContacts(true)}
             className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-lg font-medium shadow-md transition"
           >
             <RefreshCcw size={18} />
@@ -307,15 +326,12 @@ const ContactTable = () => {
                         <span className="font-semibold">{c.name}</span>
                       </div>
                     </td>
-
                     <td className="p-4 font-mono text-gray-700 dark:text-gray-300 whitespace-nowrap">
                       {c.phone}
                     </td>
-
                     <td className="p-4 text-gray-600 dark:text-gray-400 whitespace-nowrap">
                       {new Date(c.date_added).toLocaleString()}
                     </td>
-
                     <td className="p-4 text-center">
                       <button
                         onClick={() => handleDelete(c.id)}
