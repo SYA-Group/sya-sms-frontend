@@ -1,6 +1,6 @@
 // src/components/Sidebar.tsx
 import { motion } from "framer-motion";
-import { Home, Users, MessageSquare, Upload, X, UserPlus, LifeBuoy } from "lucide-react"; // added LifeBuoy
+import { Home, Users, MessageSquare, Upload, X, UserPlus, LifeBuoy,CreditCard, Search  } from "lucide-react"; // added LifeBuoy
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { getUserInfo } from "../api";
@@ -32,7 +32,11 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
     { name: "Customers", path: "/contacts", icon: <Users size={20} /> },
     { name: "Send SMS", path: "/send", icon: <MessageSquare size={20} /> },
     { name: "Upload", path: "/upload", icon: <Upload size={20} /> },
-    { name: "Contact Support", path: "/support", icon: <LifeBuoy size={20} /> }, // ✅ new link
+    { name: "Contact Support", path: "/support", icon: <LifeBuoy size={20} /> }, 
+    { name: "Pricing", path: "/pricing", icon: <CreditCard size={20} /> },
+    { name: "Search Customers", path: "/elastic", icon: <Search size={20} /> },
+
+// ✅ new link
   ];
 
   // Only add Register if admin

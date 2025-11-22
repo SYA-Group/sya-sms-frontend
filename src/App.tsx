@@ -16,6 +16,7 @@ import UpdateEmail from "./components/UpdateEmail";
 import ContactSupport from "./components/ContactSupport";
 import ManageUsers from "./pages/ManageUsers";
 import Pricing from "./pages/Pricing";
+import ElasticSearch from "./pages/ElasticSearch";
 const App = () => {
   return (
     <BrowserRouter>
@@ -107,6 +108,16 @@ const App = () => {
     <ProtectedRoute>
       <Layout>
         <Pricing />
+      </Layout>
+      </ProtectedRoute>
+  }
+/>
+<Route
+  path="/elastic"
+  element={
+    <ProtectedRoute>
+      <Layout>
+      <ElasticSearch/>
       </Layout>
     </ProtectedRoute>
   }
