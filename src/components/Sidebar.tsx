@@ -35,6 +35,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
     { name: "Contact Support", path: "/support", icon: <LifeBuoy size={20} /> }, 
     { name: "Pricing", path: "/pricing", icon: <CreditCard size={20} /> },
     { name: "Search Customers", path: "/elastic", icon: <Search size={20} /> },
+    { name: "Add Pricing", path: "/add-pricing", icon: <Search size={20} /> },
 
 // ✅ new link
   ];

@@ -6,12 +6,28 @@ const api = axios.create({
   baseURL: API_URL,
 });
 
-// 🔹 Automatically attach token if logged in
 api.interceptors.request.use((config) => {
+  const url = config.url || "";
+
+  // Make GET /pricing public (no token)
+  if (config.method === "get" && (url.startsWith("/pricing"))) {
+    if (config.headers) {
+      delete config.headers.Authorization;
+    }
+    return config;
+  }
+
+  // Otherwise include JWT (for all protected routes)
   const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
   return config;
 });
+
+
 
 // ---------- AUTH ----------
 
@@ -162,10 +178,6 @@ export const getPricing = async () => {
   return res.data;
 };
 
-export const createPricing = async (data: any) => {
-  const res = await api.post("/pricing", data);
-  return res.data;
-};
 
 export const updatePricing = async (id: number, data: any) => {
   const res = await api.put(`/pricing/${id}`, data);
@@ -177,24 +189,29 @@ export const deletePricing = async (id: number) => {
   return res.data;
 };
 
-// ---------- ERROR HANDLING ----------
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status;
 
+    const publicPages = ["/pricing", "/pricing/", "/login", "/register"];
+    const current = window.location.pathname;
+
+    if (publicPages.includes(current)) {
+      return Promise.reject(error);
+    }
+
     if (status === 401) {
       localStorage.removeItem("token");
-      if (window.location.pathname !== "/login") {
-        window.location.href = "/login";
-      }
-    } else {
-      console.error("API Error:", error.response?.data || error.message);
+      window.location.href = "/login";
     }
 
     return Promise.reject(error);
   }
 );
+
+
+
 export const searchCount = async (
   query: string,
   governorate?: string,
@@ -250,6 +267,22 @@ export const sendSearchSMS = async (data: {
   phone_key?: string;
 }) => {
   const res = await api.post("/search/send", data);
+  return res.data;
+};
+
+
+export const createPricing = async (body: any) => {
+  const res = await api.post("/pricing", body);
+  return res.data;
+};
+
+export const updatePricingPlan = async (id: number, body: any) => {
+  const res = await api.put(`/pricing/${id}`, body);
+  return res.data;
+};
+
+export const deletePricingPlan = async (id: number) => {
+  const res = await api.delete(`/pricing/${id}`);
   return res.data;
 };
 

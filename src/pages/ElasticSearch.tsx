@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { searchCount, searchPreview, sendSearchSMS } from "../api";
+import api, { searchCount, searchPreview, sendSearchSMS } from "../api";
 import { useTheme } from "../context/ThemeContext";
 import toast from "react-hot-toast";
 import { Search, Send, Loader2 } from "lucide-react";
@@ -25,7 +25,27 @@ const ElasticSearch = () => {
   const [gender, setGender] = useState("");
   const [birthdate, setBirthdate] = useState("");
   const [phone_key, setPhoneKey] = useState("");
+  const [errors, setErrors] = useState<any>({});
 
+
+
+
+
+  useEffect(() => {
+    const fetchLastMessage = async () => {
+      try {
+        const res = await api.get("/sms/last_message");  
+        if (res.data.message) {
+          setSmsText(res.data.message);
+        }
+      } catch (err) {
+        console.error("Failed to load last message for ElasticSearch:", err);
+      }
+    };
+  
+    fetchLastMessage();
+  }, []);
+  
   // ---------------------------------------------------------
   // 🔵 SINGLE COUNT EFFECT (debounced)
   // ---------------------------------------------------------
@@ -61,12 +81,17 @@ const ElasticSearch = () => {
   // 🔵 LOAD PREVIEW (WORKS WITH FILTERS ONLY)
   // ---------------------------------------------------------
   const loadPreview = async () => {
-    if (!query && !governorate && !gender && !birthdate && !phone_key) {
-      toast.error("Type something or select a filter first.");
+    const noFilters =
+      !query && !governorate && !gender && !birthdate && !phone_key;
+  
+    if (noFilters) {
+      setErrors({ query: "Type something or select a filter first." });
       return;
     }
-
+  
+    setErrors({}); // clear preview-related errors
     setLoadingPreview(true);
+  
     try {
       const res = await searchPreview(
         query || "",
@@ -76,42 +101,35 @@ const ElasticSearch = () => {
         birthdate || undefined,
         phone_key || undefined
       );
-
+  
       setPreview(res.results || []);
     } catch (err) {
-      toast.error("Failed to load preview");
+      setErrors({
+        query: "Failed to load preview.",
+      });
     }
+  
     setLoadingPreview(false);
   };
+  
 
 
 
   const buildGeneral = (item: any) => {
     const parts: string[] = [];
   
-    if (query) parts.push(query);
-    if (governorate) parts.push(governorate);
-    if (gender) parts.push(gender);
-    if (birthdate) parts.push(birthdate);
-    if (phone_key) {
-      const map: any = {
-        vodafone: "Vodafone",
-        etisalat: "Etisalat",
-        orange: "Orange",
-        we: "WE",
-      };
-      parts.push(map[phone_key] || phone_key);
-    }
+    if (item.gender) parts.push(item.gender === "male" ? "Male" : "Female");
+    if (item.fromCity) parts.push(item.fromCity);
+    if (item.country) parts.push(item.country.toUpperCase());
+    if (item.jop) parts.push(item.jop);
+    if (item.workAt) parts.push(item.workAt);
+    if (item.studiedAt) parts.push(`Studied at ${item.studiedAt}`);
   
-    // If the user typed nothing or selected nothing → fallback to actual job/work fields
-    if (parts.length === 0) {
-      if (item.jop) parts.push(item.jop);
-      else if (item.workAt) parts.push(item.workAt);
-      else parts.push("-");
-    }
+    if (parts.length === 0) return "-";
   
     return parts.join(" • ");
   };
+  
   
   const maskPhone = (phone: string) => {
     if (!phone) return "-";
@@ -127,16 +145,23 @@ const ElasticSearch = () => {
   const handleSend = async () => {
     if (!query && !governorate && !gender && !birthdate && !phone_key) {
       toast.error("Search or filter first.");
+      setErrors({ query: "You must type search or choose a filter." });
       return;
     }
-
-    if (!smsText || limit <= 0) {
-      toast.error("Please fill SMS text and limit.");
+  
+    const newErrors: any = {};
+  
+    if (!smsText) newErrors.smsText = "SMS text is required.";
+    if (limit <= 0) newErrors.limit = "Limit must be greater than 0.";
+  
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
-
+  
     setSending(true);
-
+    setErrors({}); // clear old errors
+  
     try {
       const res = await sendSearchSMS({
         query,
@@ -148,14 +173,36 @@ const ElasticSearch = () => {
         birthdate: birthdate || undefined,
         phone_key: phone_key || undefined,
       });
-
+  
       toast.success(`Sent: ${res.sent}, Failed: ${res.failed}`);
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || "Failed to send");
+      const backendError = err?.response?.data?.error || "Failed to send";
+  
+      // Map backend errors to fields
+      if (backendError.includes("search")) {
+        setErrors({ query: backendError });
+      } else if (backendError.includes("Limit")) {
+        setErrors({ limit: backendError });
+      } else if (backendError.includes("SMS")) {
+        setErrors({ smsText: backendError });
+      } else {
+        toast.error(backendError);
+      }
     }
-
+  
     setSending(false);
   };
+  
+  const getSmsUnits = (text: string) => {
+    const length = text.length;
+  
+    if (length === 0) return 0;
+    if (length <= 70) return 1;
+  
+    // Multiparts: 67 chars each after first
+    return Math.ceil((length - 70) / 67) + 1;
+  };
+  
 
   return (
     <div
@@ -183,11 +230,12 @@ const ElasticSearch = () => {
             placeholder="Type city or governorate..."
             value={governorate}
             onChange={(e) => setGovernorate(e.target.value)}
-            className={`w-full mt-1 px-3 py-2 rounded-lg ${
-              darkMode
-                ? "bg-slate-900 border-slate-700"
-                : "bg-gray-100 border-gray-300"
-            }`}
+            className={`w-full mt-1 px-3 py-2 rounded-lg border
+              ${darkMode
+                ? "bg-slate-900 border-slate-600 text-white placeholder:text-gray-400"
+                : "bg-gray-100 border-gray-400 text-gray-900 placeholder:text-gray-500"
+              }`}
+            
           />
         </div>
 
@@ -197,11 +245,12 @@ const ElasticSearch = () => {
           <select
             value={gender}
             onChange={(e) => setGender(e.target.value)}
-            className={`w-full mt-1 px-3 py-2 rounded-lg ${
-              darkMode
-                ? "bg-slate-900 border-slate-700"
-                : "bg-gray-100 border-gray-300"
-            }`}
+            className={`w-full mt-1 px-3 py-2 rounded-lg border
+              ${darkMode
+                ? "bg-slate-900 border-slate-600 text-white"
+                : "bg-gray-100 border-gray-400 text-gray-900"
+              }`}
+            
           >
             <option value="">All</option>
             <option value="male">Male</option>
@@ -216,11 +265,12 @@ const ElasticSearch = () => {
             type="date"
             value={birthdate}
             onChange={(e) => setBirthdate(e.target.value)}
-            className={`w-full mt-1 px-3 py-2 rounded-lg ${
-              darkMode
-                ? "bg-slate-900 border-slate-700"
-                : "bg-gray-100 border-gray-300"
-            }`}
+            className={`w-full mt-1 px-3 py-2 rounded-lg border
+              ${darkMode
+                ? "bg-slate-900 border-slate-600 text-white placeholder:text-gray-400"
+                : "bg-gray-100 border-gray-400 text-gray-900 placeholder:text-gray-500"
+              }`}
+            
           />
         </div>
 
@@ -230,11 +280,12 @@ const ElasticSearch = () => {
           <select
             value={phone_key}
             onChange={(e) => setPhoneKey(e.target.value)}
-            className={`w-full mt-1 px-3 py-2 rounded-lg ${
-              darkMode
-                ? "bg-slate-900 border-slate-700"
-                : "bg-gray-100 border-gray-300"
-            }`}
+            className={`w-full mt-1 px-3 py-2 rounded-lg border
+              ${darkMode
+                ? "bg-slate-900 border-slate-600 text-white"
+                : "bg-gray-100 border-gray-400 text-gray-900"
+              }`}
+            
           >
             <option value="">All Carriers</option>
             <option value="vodafone">Vodafone </option>
@@ -258,16 +309,25 @@ const ElasticSearch = () => {
             type="text"
             placeholder="Type anything to search ElasticSearch..."
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              if (errors.query) setErrors((prev: any) => ({ ...prev, query: null }));
+            }}
+            
             className={`flex-1 px-4 py-3 rounded-lg outline-none text-base ${
               darkMode
                 ? "bg-slate-900 border border-slate-700"
                 : "bg-gray-100 border border-gray-300"
             }`}
           />
+          
+
 
           {loadingCount && <Loader2 className="animate-spin text-blue-500" />}
         </div>
+        {errors.query && (
+  <p className="text-red-500 text-sm mt-1">{errors.query}</p>
+)}
 
         {count !== null && (
           <p className="mt-3 text-sm opacity-80">
@@ -291,7 +351,6 @@ const ElasticSearch = () => {
           darkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-200"
         }`}
       >
-        <h2 className="text-xl font-semibold mb-4">Preview Results (Top 20)</h2>
 
         {loadingPreview ? (
           <div className="flex justify-center py-10">
@@ -301,22 +360,74 @@ const ElasticSearch = () => {
           <p>No preview available yet.</p>
         ) : (
           <div className="overflow-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-300 dark:border-slate-700">
-                  <th className="p-2 text-left">Phone</th>
-                  <th className="p-2 text-left">General</th>
-                </tr>
-              </thead>
-              <tbody>
-                {preview.map((item, i) => (
-                  <tr key={i} className="border-b dark:border-slate-800">
-                    <td className="p-2">{maskPhone(item.phone)}</td>
-                    <td className="p-2">{buildGeneral(item)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="overflow-hidden rounded-xl border border-gray-300 dark:border-slate-700 shadow-md">
+            <motion.div
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  className={`rounded-2xl shadow-lg overflow-hidden border mb-10 ${
+    darkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-200"
+  }`}
+>
+  {/* Header */}
+  <div
+    className={`p-5 border-b ${
+      darkMode
+        ? "border-slate-700 text-gray-100"
+        : "border-gray-200 text-gray-800"
+    }`}
+  >
+    <h2 className="text-xl sm:text-2xl font-semibold">Preview Results (Top 20)</h2>
+  </div>
+
+  {/* Table */}
+  <div
+    className={`overflow-x-auto scrollbar-thin ${
+      darkMode
+        ? "scrollbar-thumb-slate-600"
+        : "scrollbar-thumb-gray-400"
+    }`}
+  >
+    <table
+      className={`w-full text-sm sm:text-base ${
+        darkMode ? "text-gray-200" : "text-gray-800"
+      }`}
+    >
+      <thead
+        className={`sticky top-0 z-10 ${
+          darkMode ? "bg-slate-900" : "bg-gray-100"
+        }`}
+      >
+        <tr>
+          <th className="text-left px-6 py-4 font-semibold">Phone</th>
+          <th className="text-left px-6 py-4 font-semibold">General</th>
+        </tr>
+      </thead>
+
+      <tbody
+        className={`divide-y ${
+          darkMode ? "divide-slate-700" : "divide-gray-200"
+        }`}
+      >
+        {preview.map((item, i) => (
+          <tr
+            key={i}
+            className={`transition-colors hover:bg-blue-50 dark:hover:bg-slate-700`}
+          >
+            <td className="px-6 py-4 font-medium text-blue-600 dark:text-blue-400">
+              {maskPhone(item.phone)}
+            </td>
+            <td className="px-6 py-4">
+              {buildGeneral(item)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</motion.div>
+
+</div>
+
           </div>
         )}
       </motion.div>
@@ -344,19 +455,43 @@ const ElasticSearch = () => {
                   : "bg-gray-100 border-gray-300"
               }`}
             />
+            {errors.limit && (
+  <p className="text-red-500 text-sm mt-1">{errors.limit}</p>
+)}
+
           </div>
 
           <div className="md:col-span-2">
             <label className="text-sm opacity-70">SMS Text</label>
             <textarea
-              value={smsText}
-              onChange={(e) => setSmsText(e.target.value)}
-              className={`w-full mt-1 px-4 py-2 rounded-lg h-24 resize-none ${
-                darkMode
-                  ? "bg-slate-900 border-slate-600"
-                  : "bg-gray-100 border-gray-300"
-              }`}
-            ></textarea>
+  value={smsText}
+  onChange={(e) => {
+    setSmsText(e.target.value);
+
+    // 👇 clear SMS error as soon as user types
+    if (errors.smsText) {
+      setErrors((prev: any) => ({ ...prev, smsText: null }));
+    }
+  }}
+  className={`w-full mt-1 px-4 py-2 rounded-lg h-24 resize-none ${
+    darkMode
+      ? "bg-slate-900 border-slate-600"
+      : "bg-gray-100 border-gray-300"
+  }`}
+/>
+
+            {/* Character Count + SMS Units */}
+<div className="flex items-center justify-between mt-1 text-sm opacity-70">
+  <p>{smsText.length} characters</p>
+  <p>{getSmsUnits(smsText)} SMS unit(s)</p>
+</div>
+
+{errors.smsText && (
+  <p className="text-red-500 text-sm mt-1">{errors.smsText}</p>
+)}
+
+
+
           </div>
         </div>
 

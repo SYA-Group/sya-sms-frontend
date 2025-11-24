@@ -6,9 +6,51 @@ import "../index.css";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const token = localStorage.getItem("token");
 
+  // ---------------------------
+  // PUBLIC LAYOUT (no login)
+  // ---------------------------
+  if (!token) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0f172a] text-gray-900 dark:text-gray-100">
+
+        {/* Public Navbar */}
+        <header className="w-full px-6 py-4 flex items-center justify-between bg-white/70 dark:bg-gray-900/50 backdrop-blur-md shadow-sm">
+          <h1 className="text-xl font-bold text-indigo-600 dark:text-indigo-400">
+            Profile SMS
+          </h1>
+
+          <div className="flex gap-4">
+            <a
+              href="/login"
+              className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+            >
+              Login
+            </a>
+            <a
+              href="/register"
+              className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+            >
+              Register
+            </a>
+          </div>
+        </header>
+
+        {/* Main public content */}
+        <main className="px-6 py-10">
+          {children}
+        </main>
+      </div>
+    );
+  }
+
+  // ---------------------------
+  // DASHBOARD LAYOUT (logged in)
+  // ---------------------------
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-[var(--bg-main-dark)] text-gray-900 dark:text-gray-100 transition-colors">
+      
       {/* Sidebar */}
       <aside
         className={`${

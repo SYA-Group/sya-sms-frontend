@@ -14,6 +14,8 @@ const SendPanel = () => {
   const [sentCount, setSentCount] = useState(0);
   const [failedCount, setFailedCount] = useState(0);
   const pollRef = useRef<number | null>(null);
+  const [errors, setErrors] = useState<any>({});
+
 
   /** ------------------------------
    *  Helper: Fetch SMS progress
@@ -104,6 +106,16 @@ const SendPanel = () => {
     }
   };
 
+  const getSmsUnits = (text: string) => {
+    const length = text.length;
+  
+    if (length === 0) return 0;
+    if (length <= 70) return 1;
+  
+    return Math.ceil((length - 70) / 67) + 1;
+  };
+  
+
   /** ------------------------------
    *  Load last message on mount
    *  ------------------------------ */
@@ -128,6 +140,8 @@ const SendPanel = () => {
     return () => stopPollingProgress();
   }, []);
 
+
+  
   /** ------------------------------
    *  Derived values
    *  ------------------------------ */
@@ -148,12 +162,32 @@ const SendPanel = () => {
         </h1>
 
         <textarea
-          className="w-full h-32 p-4 mb-4 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 outline-none resize-none shadow-sm"
-          placeholder="Type your message here..."
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          disabled={isActive}
-        />
+  className="w-full h-32 p-4 mb-1 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 outline-none resize-none shadow-sm"
+  placeholder="Type your message here..."
+  value={message}
+  onChange={(e) => {
+    const val = e.target.value;
+    setMessage(val);
+
+    // Clear error when typing
+    if (errors.smsText) {
+      setErrors((prev: any) => ({ ...prev, smsText: null }));
+    }
+  }}
+  disabled={isActive}
+/>
+
+{/* Character count + units */}
+<div className="flex justify-between text-sm opacity-70 px-1 mb-1">
+  <span>{message.length} characters</span>
+  <span>{getSmsUnits(message)} SMS unit(s)</span>
+</div>
+
+{/* Error message like ElasticSearch */}
+{errors.smsText && (
+  <p className="text-red-500 text-sm mb-2 px-1">{errors.smsText}</p>
+)}
+
 
         <div className="flex gap-4 mt-2">
           <button

@@ -126,3 +126,7 @@ td.wrap {
   word-wrap: break-word;
   overflow-wrap: anywhere;
 }
+/* Make the calendar icon visible in dark mode */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.3);
+}
