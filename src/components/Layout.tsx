@@ -3,11 +3,16 @@ import { useState } from "react";
 import Sidebar from "./Sidebar";
 import Headers from "./Headers";
 import "../index.css";
+import Cookies from "js-cookie";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // ⭐ CHECK ALL TOKEN LOCATIONS — local, session, cookies
   const token =
-  localStorage.getItem("token") || sessionStorage.getItem("token");
+    localStorage.getItem("token") ||
+    sessionStorage.getItem("token") ||
+    Cookies.get("token");
 
   // ---------------------------
   // PUBLIC LAYOUT (no login)

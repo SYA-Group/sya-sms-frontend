@@ -1,17 +1,32 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { login } from "../api";
 import { useNavigate, Link } from "react-router-dom";
 import { Loader2 } from "lucide-react";
+import Cookies from "js-cookie";
 
 const Login = () => {
   const navigate = useNavigate();
 
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false); // ⭐ NEW
+  // ⭐ Auto-fill username & password from cookies
+  const [username, setUsername] = useState(Cookies.get("saved_username") || "");
+  const [password, setPassword] = useState(Cookies.get("saved_password") || "");
+  const [remember, setRemember] = useState(
+    Cookies.get("saved_username") ? true : false
+  );
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // ⭐ Auto redirect ONLY if token exists (not cookies)
+  useEffect(() => {
+    const token =
+      localStorage.getItem("token") || sessionStorage.getItem("token");
+
+    if (token) {
+      navigate("/dashboard");
+    }
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +36,16 @@ const Login = () => {
     try {
       const data = await login(username, password);
 
-      // ⭐ SAVE TOKEN CONDITIONALLY
+      // ⭐ Save login info in cookies (if remember is checked)
+      if (remember) {
+        Cookies.set("saved_username", username, { expires: 30 });
+        Cookies.set("saved_password", password, { expires: 30 });
+      } else {
+        Cookies.remove("saved_username");
+        Cookies.remove("saved_password");
+      }
+
+      // ⭐ Store tokens — unchanged behavior
       if (remember) {
         localStorage.setItem("token", data.access_token);
         localStorage.setItem("refresh_token", data.refresh_token);
@@ -31,7 +55,6 @@ const Login = () => {
       }
 
       navigate("/dashboard");
-
     } catch (err: any) {
       console.error(err);
       setError(err.response?.data?.error || "Invalid username or password");
@@ -53,13 +76,14 @@ const Login = () => {
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Username */}
           <div>
             <label className="block text-gray-700 dark:text-gray-300 font-medium mb-1">
               Username
             </label>
             <input
               type="text"
-              className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               placeholder="Enter your username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -67,13 +91,14 @@ const Login = () => {
             />
           </div>
 
+          {/* Password */}
           <div>
             <label className="block text-gray-700 dark:text-gray-300 font-medium mb-1">
               Password
             </label>
             <input
               type="password"
-              className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -81,7 +106,7 @@ const Login = () => {
             />
           </div>
 
-          {/* ⭐ REMEMBER ME CHECKBOX */}
+          {/* Remember Me */}
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2 text-gray-700 dark:text-gray-300 cursor-pointer">
               <input
@@ -94,14 +119,16 @@ const Login = () => {
             </label>
           </div>
 
+          {/* Error */}
           {error && (
             <p className="text-red-500 text-sm text-center">{error}</p>
           )}
 
+          {/* Submit */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg flex items-center justify-center"
           >
             {loading ? (
               <>
@@ -114,7 +141,7 @@ const Login = () => {
           </button>
         </form>
 
-        {/* 🔹 Forgot Password Link */}
+        {/* Forgot Password */}
         <div className="mt-4 text-center">
           <Link
             to="/forgot-password"

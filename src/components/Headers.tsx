@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { getUserInfo } from "../api";
 import { useTheme } from "../context/ThemeContext";
 import "modern-normalize/modern-normalize.css";
+import Cookies from "js-cookie";
+
 
 interface HeaderProps {
   toggleSidebar?: () => void;
@@ -35,9 +37,22 @@ const Headers = ({ toggleSidebar, onRefreshUser }: HeaderProps) => {
   const pageTitle = titles[location.pathname] || "📊 SMS Dashboard";
 
   const handleLogout = () => {
+    // Clear tokens from all places
     localStorage.removeItem("token");
-    navigate("/login");
+    localStorage.removeItem("refresh_token");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("refresh_token");
+  
+    // Clear cookies (auto-login + auto-fill)
+    Cookies.remove("token");
+    Cookies.remove("refresh_token");
+    Cookies.remove("remember_username");
+    Cookies.remove("remember_password");
+  
+    // Redirect
+    window.location.href = "/login";
   };
+  
 
   const fetchUserInfo = async () => {
     try {
