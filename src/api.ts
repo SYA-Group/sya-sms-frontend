@@ -6,7 +6,6 @@ const api = axios.create({
   baseURL: API_URL,
 });
 
-
 // --------------------------------------------
 // 🔵 REQUEST INTERCEPTOR — attach access token
 // --------------------------------------------
@@ -31,8 +30,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-
-
 let isRefreshing = false;
 let failedQueue: any[] = [];
 
@@ -43,6 +40,7 @@ const processQueue = (error: any, token: string | null) => {
   });
   failedQueue = [];
 };
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -50,15 +48,14 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const url = originalRequest?.url || "";
 
-   // IMPORTANT: Skip refresh for all auth endpoints
-if (
-  url.includes("/auth/login") ||
-  url.includes("/auth/register") ||
-  url.includes("/auth/refresh")
-) {
-  return Promise.reject(error);
-}
-
+    // IMPORTANT: Skip refresh for all auth endpoints
+    if (
+      url.includes("/auth/login") ||
+      url.includes("/auth/register") ||
+      url.includes("/auth/refresh")
+    ) {
+      return Promise.reject(error);
+    }
 
     // If unauthorized AND this request has not retried yet
     if (status === 401 && !originalRequest._retry) {
@@ -89,11 +86,9 @@ if (
       isRefreshing = true;
 
       try {
-        const res = await axios.post(
-          `${API_URL}/auth/refresh`,
-          null,
-          { headers: { Authorization: `Bearer ${refreshToken}` } }
-        );
+        const res = await axios.post(`${API_URL}/auth/refresh`, null, {
+          headers: { Authorization: `Bearer ${refreshToken}` },
+        });
 
         const newAccessToken = res.data.access_token;
 
@@ -113,14 +108,12 @@ if (
           "Bearer " + newAccessToken;
 
         return api(originalRequest);
-
       } catch (refreshErr) {
         processQueue(refreshErr, null);
         localStorage.clear();
         sessionStorage.clear();
         window.location.href = "/login";
         return Promise.reject(refreshErr);
-
       } finally {
         isRefreshing = false;
       }
@@ -129,8 +122,6 @@ if (
     return Promise.reject(error);
   }
 );
-
-
 
 // ---------- AUTH ----------
 
@@ -281,7 +272,6 @@ export const getPricing = async () => {
   return res.data;
 };
 
-
 export const updatePricing = async (id: number, data: any) => {
   const res = await api.put(`/pricing/${id}`, data);
   return res.data;
@@ -292,13 +282,20 @@ export const deletePricing = async (id: number) => {
   return res.data;
 };
 
-
+// ---------- SEARCH COUNT ----------
 export const searchCount = async (
   query: string,
   governorate?: string,
   gender?: string,
   birthdate?: string,
-  phone_key?: string
+  phone_key?: string,
+  city?: string,
+  address?: string,
+  work?: string,
+  studied?: string,
+  religion?: string,
+  relation?: string,
+  job?: string
 ) => {
   const params = new URLSearchParams();
   params.set("q", query);
@@ -306,12 +303,19 @@ export const searchCount = async (
   if (governorate) params.set("governorate", governorate);
   if (gender) params.set("gender", gender);
   if (birthdate) params.set("birthdate", birthdate);
-  if (phone_key) params.set("phone_key", phone_key); // ✔
+  if (phone_key) params.set("phone_key", phone_key);
+
+  if (city) params.set("city", city);
+  if (address) params.set("address", address);
+  if (work) params.set("work", work);
+  if (studied) params.set("studied", studied);
+  if (religion) params.set("religion", religion);
+  if (relation) params.set("relation", relation);
+  if (job) params.set("job", job);
 
   const res = await api.get(`/search/count?${params.toString()}`);
   return res.data;
 };
-
 
 // ---------- SEARCH PREVIEW ----------
 export const searchPreview = async (
@@ -320,7 +324,14 @@ export const searchPreview = async (
   governorate?: string,
   gender?: string,
   birthdate?: string,
-  phone_key?: string
+  phone_key?: string,
+  city?: string,
+  address?: string,
+  work?: string,
+  studied?: string,
+  religion?: string,
+  relation?: string,
+  job?: string
 ) => {
   const params = new URLSearchParams();
   params.set("q", query);
@@ -329,12 +340,19 @@ export const searchPreview = async (
   if (governorate) params.set("governorate", governorate);
   if (gender) params.set("gender", gender);
   if (birthdate) params.set("birthdate", birthdate);
-  if (phone_key) params.set("phone_key", phone_key); // ✔
+  if (phone_key) params.set("phone_key", phone_key);
+
+  if (city) params.set("city", city);
+  if (address) params.set("address", address);
+  if (work) params.set("work", work);
+  if (studied) params.set("studied", studied);
+  if (religion) params.set("religion", religion);
+  if (relation) params.set("relation", relation);
+  if (job) params.set("job", job);
 
   const res = await api.get(`/search/preview?${params.toString()}`);
   return res.data;
 };
-
 
 // ---------- SEND SEARCH SMS ----------
 export const sendSearchSMS = async (data: {
@@ -346,11 +364,17 @@ export const sendSearchSMS = async (data: {
   gender?: string;
   birthdate?: string;
   phone_key?: string;
+  city?: string;
+  address?: string;
+  work?: string;
+  studied?: string;
+  religion?: string;
+  relation?: string;
+  job?: string;
 }) => {
   const res = await api.post("/search/send", data);
   return res.data;
 };
-
 
 export const createPricing = async (body: any) => {
   const res = await api.post("/pricing", body);
@@ -366,8 +390,5 @@ export const deletePricingPlan = async (id: number) => {
   const res = await api.delete(`/pricing/${id}`);
   return res.data;
 };
-
-
-
 
 export default api;

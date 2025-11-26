@@ -40,7 +40,17 @@ const ExpandableRow: React.FC<MessageRowProps> = ({ msg, index }) => {
           </span>
         </td>
         <td className="px-4 sm:px-6 py-3 sm:py-4 text-gray-600 dark:text-gray-400 text-base sm:text-lg whitespace-nowrap">
-        {msg.created_at || "-"}
+       
+     
+  {new Date(msg.created_at).toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    hour12: true,
+  })}
+
         </td>
       </motion.tr>
 

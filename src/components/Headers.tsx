@@ -104,7 +104,7 @@ const Headers = ({ toggleSidebar, onRefreshUser }: HeaderProps) => {
           <Menu size={22} />
         </button>
 
-        <h1 className="text-xl font-semibold">{pageTitle}</h1>
+        {/*<h1 className="text-xl font-semibold">{pageTitle}</h1>*/}
 
         {!loading && userInfo && (
           <div className="flex items-center flex-wrap gap-3">
@@ -116,7 +116,7 @@ const Headers = ({ toggleSidebar, onRefreshUser }: HeaderProps) => {
               dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700
               px-3 py-1.5 rounded-full backdrop-blur-sm
             ">
-              <span className="font-medium">Sender:</span>
+              <span className="font-medium"></span>
               <span className="font-semibold">{userInfo.sms_sender_id}</span>
             </div>
 
@@ -132,7 +132,7 @@ const Headers = ({ toggleSidebar, onRefreshUser }: HeaderProps) => {
                 }
               `}
             >
-              <span className="font-medium">SMS UNIT:</span>
+              <span className="font-medium">SMS:</span>
               <span className="font-bold text-lg tracking-wide">
                 {isQuotaEmpty ? "0 ❌" : remaining.toLocaleString()}
               </span>
@@ -153,7 +153,7 @@ const Headers = ({ toggleSidebar, onRefreshUser }: HeaderProps) => {
               </button>
             </div>
 
-            {/* API Status */}
+            {/* API Status 
             <div className="
               flex items-center gap-2
               bg-green-50 text-green-700 border border-green-300
@@ -162,7 +162,7 @@ const Headers = ({ toggleSidebar, onRefreshUser }: HeaderProps) => {
             ">
               <span className="font-semibold">{userInfo.sms_sender_id} API</span>
               <span className="text-xs ml-1">Available ✅</span>
-            </div>
+            </div>*/}
           </div>
         )}
       </div>

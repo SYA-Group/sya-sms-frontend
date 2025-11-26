@@ -293,15 +293,13 @@ const ContactTable = () => {
                 }`}
               >
                 <tr>
-                  {["name", "phone", "date_added"].map((field) => (
+                  { ["phone", "date_added"].map((field) => (
                     <th
                       key={field}
                       onClick={() => handleSort(field as keyof Contact)}
                       className="px-6 py-4 text-left font-semibold cursor-pointer hover:text-blue-500"
                     >
-                      {field === "name"
-                        ? "Name"
-                        : field === "phone"
+                      { field === "phone"
                         ? "Phone"
                         : "Date Added"}{" "}
                       <ArrowUpDown size={14} className="inline ml-1" />
@@ -329,11 +327,19 @@ const ContactTable = () => {
                         : "hover:bg-gray-100/80"
                     }`}
                   >
-                    <td className="px-6 py-3 font-semibold">{c.name}</td>
+                    {/*<td className="px-6 py-3 font-semibold">{c.name}</td>*/}
                     <td className="px-6 py-3 font-mono">{c.phone}</td>
                     <td className="px-6 py-3">
-                      {new Date(c.date_added).toLocaleString()}
-                    </td>
+  {new Date(c.date_added).toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    hour12: true,
+  })}
+</td>
+
                     <td className="px-6 py-3 text-center">
                       <button
                         onClick={() => handleDelete(c.id)}
