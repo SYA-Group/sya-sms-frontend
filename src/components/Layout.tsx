@@ -35,11 +35,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               Login
             </a>
             <a
-              href="/register"
-              className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
-            >
-              Register
-            </a>
+            href="/pricing#plans"
+            className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+          >
+            Register
+          </a>
           </div>
         </header>
 

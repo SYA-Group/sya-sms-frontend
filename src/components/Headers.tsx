@@ -1,11 +1,10 @@
 import { Moon, Sun, Menu, User, Bell, Globe } from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate} from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
-import { getUserInfo } from "../api";
+import { getUnreadNotifications, getUserInfo, markNotificationsRead } from "../api";
 import { useTheme } from "../context/ThemeContext";
 import "modern-normalize/modern-normalize.css";
 import Cookies from "js-cookie";
-
 
 interface HeaderProps {
   toggleSidebar?: () => void;
@@ -16,43 +15,35 @@ interface UserInfo {
   username: string;
   email?: string;
   sms_sender_id: string;
-  sms_quota: number;  // remaining units from backend
+  sms_quota: number;
 }
 
 const Headers = ({ toggleSidebar, onRefreshUser }: HeaderProps) => {
   const navigate = useNavigate();
-  const location = useLocation();
+ 
   const { darkMode, toggleTheme } = useTheme();
+
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifOpen, setNotifOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const titles: Record<string, string> = {
-    "/dashboard": "📊 Dashboard",
-    "/contacts": "👥 Contacts",
-    "/send": "💬 Send SMS",
-    "/upload": "📤 Upload Contacts",
-  };
-  const pageTitle = titles[location.pathname] || "📊 SMS Dashboard";
-
+ 
   const handleLogout = () => {
-    // Clear tokens from all places
     localStorage.removeItem("token");
     localStorage.removeItem("refresh_token");
     sessionStorage.removeItem("token");
     sessionStorage.removeItem("refresh_token");
-  
-    // Clear cookies (auto-login + auto-fill)
+
     Cookies.remove("token");
     Cookies.remove("refresh_token");
     Cookies.remove("remember_username");
     Cookies.remove("remember_password");
-  
-    // Redirect
+
     window.location.href = "/login";
   };
-  
 
   const fetchUserInfo = async () => {
     try {
@@ -66,36 +57,52 @@ const Headers = ({ toggleSidebar, onRefreshUser }: HeaderProps) => {
     }
   };
 
+  // Fetch notifications every 10 seconds
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        const res = await getUnreadNotifications();
+        setNotifications(res.data || []);
+      } catch {}
+    };
+
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch user info every 10 seconds
   useEffect(() => {
     fetchUserInfo();
     const interval = setInterval(fetchUserInfo, 10000);
     return () => clearInterval(interval);
   }, []);
 
+  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setProfileOpen(false);
+        setNotifOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // --------------------------------------------------
-  // ⭐ SAFE FIX: always convert sms_quota to number
-  // --------------------------------------------------
-  const remaining = Number(userInfo?.sms_quota ?? 0); // ensures no NaN
+  const remaining = Number(userInfo?.sms_quota ?? 0);
   const isQuotaEmpty = remaining <= 0;
 
   return (
-    <header className="
-      flex items-center justify-between
-      bg-white text-gray-900 border-b border-gray-200
-      dark:bg-[#0f172a] dark:text-white dark:border-gray-800
-      px-6 py-3 shadow-md transition-colors
-    ">
-      {/* Left Section */}
+    <header
+      className="
+        flex items-center justify-between
+        bg-white text-gray-900 border-b border-gray-200
+        dark:bg-[#0f172a] dark:text-white dark:border-gray-800
+        px-6 py-3 shadow-md transition-colors
+      "
+    >
+      {/* LEFT */}
       <div className="flex items-center gap-4">
         <button
           onClick={toggleSidebar}
@@ -104,23 +111,21 @@ const Headers = ({ toggleSidebar, onRefreshUser }: HeaderProps) => {
           <Menu size={22} />
         </button>
 
-        {/*<h1 className="text-xl font-semibold">{pageTitle}</h1>*/}
-
         {!loading && userInfo && (
           <div className="flex items-center flex-wrap gap-3">
-
             {/* Sender */}
-            <div className="
+            <div
+              className="
               flex items-center gap-2
               bg-blue-100 text-blue-800 border border-blue-300
               dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700
               px-3 py-1.5 rounded-full backdrop-blur-sm
-            ">
-              <span className="font-medium"></span>
+            "
+            >
               <span className="font-semibold">{userInfo.sms_sender_id}</span>
             </div>
 
-            {/* SMS Units */}
+            {/* Quota */}
             <div
               className={`
                 flex items-center gap-2 px-3 py-1.5 rounded-full border
@@ -138,45 +143,78 @@ const Headers = ({ toggleSidebar, onRefreshUser }: HeaderProps) => {
               </span>
 
               <button
-                onClick={() => alert("💰 Top-up feature coming soon!")}
-                className={`
-                  ml-2 text-xs px-3 py-1 rounded-md font-semibold shadow-sm
-                  transition-all duration-200
-                  ${
-                    isQuotaEmpty
-                      ? "bg-red-600 hover:bg-red-700 text-white"
-                      : "bg-green-600 hover:bg-green-700 text-white"
-                  }
-                `}
-              >
-                {isQuotaEmpty ? "Recharge" : "Top up"}
-              </button>
-            </div>
+              onClick={() => (window.location.href = "/pricing#plans")}
+              className={`
+                ml-2 text-xs px-3 py-1 rounded-md font-semibold shadow-sm
+                ${isQuotaEmpty ? "bg-red-600 hover:bg-red-700 text-white"
+                              : "bg-green-600 hover:bg-green-700 text-white"}
+              `}
+            >
+              {isQuotaEmpty ? "Recharge" : "Top up"}
+            </button>
 
-            {/* API Status 
-            <div className="
-              flex items-center gap-2
-              bg-green-50 text-green-700 border border-green-300
-              dark:bg-green-900/30 dark:text-green-400 dark:border-green-700
-              px-3 py-1.5 rounded-full
-            ">
-              <span className="font-semibold">{userInfo.sms_sender_id} API</span>
-              <span className="text-xs ml-1">Available ✅</span>
-            </div>*/}
+            </div>
           </div>
         )}
       </div>
 
-      {/* Right Section */}
+      {/* RIGHT */}
       <div className="flex items-center gap-4" ref={dropdownRef}>
+        {/* Language + Notifications */}
         <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
           <div className="flex items-center gap-1 cursor-pointer hover:text-blue-600 dark:hover:text-white">
             <Globe size={16} />
             <span className="text-sm">English</span>
           </div>
-          <button className="hover:text-blue-600 dark:hover:text-white">
+
+          {/* 🔔 Notifications */}
+          <button
+            onClick={() => {
+              setNotifOpen(!notifOpen);
+              markNotificationsRead();
+              setNotifications([]);
+            }}
+            className="relative hover:text-blue-600 dark:hover:text-white"
+          >
             <Bell size={18} />
+
+            {notifications.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5">
+                {notifications.length}
+              </span>
+            )}
           </button>
+
+          {/* Dropdown list */}
+          {notifOpen && (
+            <div
+              className="
+                absolute right-20 mt-2 w-72 bg-white dark:bg-gray-800
+                border border-gray-200 dark:border-gray-700
+                rounded-lg shadow-xl z-50 p-3
+              "
+            >
+              {notifications.length === 0 ? (
+                <p className="text-center text-gray-500 text-sm py-2">
+                  No new notifications
+                </p>
+              ) : (
+                notifications.map((n) => (
+                  <div
+                    key={n.id}
+                    className="p-2 border-b border-gray-200 dark:border-gray-700"
+                  >
+                    <p className="font-semibold text-gray-800 dark:text-gray-100">
+                      {n.title}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-300">
+                      {n.message}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
         {/* Theme Toggle */}
@@ -204,11 +242,13 @@ const Headers = ({ toggleSidebar, onRefreshUser }: HeaderProps) => {
             </button>
 
             {profileOpen && (
-              <div className="
-                absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800
-                border border-gray-200 dark:border-gray-700
-                rounded-md shadow-lg z-50
-              ">
+              <div
+                className="
+                  absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800
+                  border border-gray-200 dark:border-gray-700
+                  rounded-md shadow-lg z-50
+                "
+              >
                 <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
                   <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
                     {userInfo.username}

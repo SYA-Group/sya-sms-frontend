@@ -391,4 +391,19 @@ export const deletePricingPlan = async (id: number) => {
   return res.data;
 };
 
+// ---------- SEARCH SMS PROGRESS ----------
+export const getSmsProgress = async () => {
+  const res = await api.get("/search/progress");
+  return res.data;
+};
+
+export const getUnreadNotifications = () =>
+  api.get("/notifications/unread");
+
+export const markNotificationsRead = () =>
+  api.post("/notifications/mark_all_read");
+
+
+
+
 export default api;

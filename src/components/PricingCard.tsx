@@ -4,12 +4,19 @@ import { CheckCircle, Star } from "lucide-react";
 interface PricingCardProps {
   price: string;
   sms: string;
-  color: string; // HEX like "#6366f1"
+  color: string;
   senderIDs?: string;
   apiIntegration?: string;
   support?: string;
   delay?: number;
   featured?: boolean;
+
+  // 🔵 NEW: Start Now callback
+  onStart?: (data: {
+    sender: string;
+    sms_api_url: string;
+    api_token: string;
+  }) => void;
 }
 
 const parseNumber = (value: string): number | null => {
@@ -29,6 +36,7 @@ const PricingCard = ({
   support = "24/7 Support",
   delay = 0,
   featured = false,
+  onStart,
 }: PricingCardProps) => {
   const priceNum = parseNumber(price);
   const smsNum = parseNumber(sms);
@@ -50,9 +58,14 @@ const PricingCard = ({
     >
       {featured && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-          <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold
-            bg-yellow-400 text-gray-900 shadow-md">
-            <Star size={14} className="fill-yellow-500 text-yellow-700" />
+          <div
+            className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold
+            bg-yellow-400 text-gray-900 shadow-md"
+          >
+            <Star
+              size={14}
+              className="fill-yellow-500 text-yellow-700"
+            />
             MOST POPULAR
           </div>
         </div>
@@ -73,7 +86,7 @@ const PricingCard = ({
               bg-clip-text text-transparent
             "
           >
-            EGP {price} 
+            EGP {price}
           </h3>
 
           <p className="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-300">
@@ -97,23 +110,36 @@ const PricingCard = ({
               key={idx}
               className="flex items-center gap-2 text-gray-700 dark:text-gray-200"
             >
-              <CheckCircle size={18} className="text-emerald-500 dark:text-emerald-400" />
+              <CheckCircle
+                size={18}
+                className="text-emerald-500 dark:text-emerald-400"
+              />
               <span>{feature}</span>
             </div>
           ))}
         </div>
 
-        <motion.button
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          className="w-full py-3 rounded-full font-semibold text-sm sm:text-base text-white shadow-lg
-            hover:shadow-xl transition-all duration-300"
-          style={{
-            background: `linear-gradient(90deg, ${color} 0%, ${color}AA 100%)`,
-          }}
-        >
-          Start Now
-        </motion.button>
+        {/* 🔵 Start Now button */}
+        {onStart && (
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            className="w-full py-3 rounded-full font-semibold text-sm sm:text-base text-white shadow-lg
+              hover:shadow-xl transition-all duration-300"
+            style={{
+              background: `linear-gradient(90deg, ${color} 0%, ${color}AA 100%)`,
+            }}
+            onClick={() =>
+              onStart({
+                sender: senderIDs,
+                sms_api_url: apiIntegration,
+                api_token: support,
+              })
+            }
+          >
+            Start Now
+          </motion.button>
+        )}
       </div>
     </motion.div>
   );

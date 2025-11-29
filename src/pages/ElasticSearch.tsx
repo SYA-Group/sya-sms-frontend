@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import api, { searchCount, searchPreview, sendSearchSMS } from "../api";
+import api, { getSmsProgress, searchCount, searchPreview, sendSearchSMS } from "../api";
 import { useTheme } from "../context/ThemeContext";
 import toast from "react-hot-toast";
 import { Search, Send, Loader2 } from "lucide-react";
@@ -41,6 +41,14 @@ const ElasticSearch = () => {
   const [showDemographic, setShowDemographic] = useState(true);
   const [showOccupation, setShowOccupation] = useState(false);
 
+  const [progress, setProgress] = useState<any>({
+    status: "idle",
+    sent: 0,
+    failed: 0,
+    total: 0,
+  });
+  
+
   useEffect(() => {
     const fetchLastMessage = async () => {
       try {
@@ -55,6 +63,21 @@ const ElasticSearch = () => {
 
     fetchLastMessage();
   }, []);
+
+
+  useEffect(() => {
+    const timer = setInterval(async () => {
+      try {
+        const res = await getSmsProgress();
+        setProgress(res);
+      } catch (err) {
+        console.error("Progress fetch failed", err);
+      }
+    }, 1500);
+  
+    return () => clearInterval(timer);
+  }, []);
+  
 
   // ---------------------------------------------------------
   // 🔵 SINGLE COUNT EFFECT (debounced)
@@ -314,7 +337,8 @@ const ElasticSearch = () => {
         job: job || undefined,
       });
 
-      toast.success(`Sent: ${res.sent}, Failed: ${res.failed}`);
+      toast.success(`Sending started… Total numbers: ${res.total}`);
+
     } catch (err: any) {
       const backendError = err?.response?.data?.error || "Failed to send";
 
@@ -820,6 +844,42 @@ const ElasticSearch = () => {
             </>
           )}
         </button>
+        {/* Sending Progress */}
+{progress.status !== "idle" && (
+  <div className="mt-5 p-4 rounded-lg border border-blue-500 bg-blue-50 dark:bg-slate-900 dark:border-slate-700 shadow">
+    {/* Title */}
+    {progress.status === "sending" && (
+      <p className="font-semibold mb-2">
+        Sending... {progress.sent} / {progress.total}
+      </p>
+    )}
+
+    {progress.status === "done" && (
+      <p className="font-semibold mb-2 text-green-600 dark:text-green-400">
+        Completed: {progress.sent} sent, {progress.failed} failed
+      </p>
+    )}
+
+    {/* Progress Bar */}
+    {progress.status === "sending" && (
+      <div className="w-full bg-gray-300 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
+        <div
+          className="bg-blue-600 h-3 transition-all"
+          style={{
+            width:
+              progress.total > 0
+                ? `${Math.min(
+                    100,
+                    Math.round((progress.sent / progress.total) * 100)
+                  )}%`
+                : "0%",
+          }}
+        />
+      </div>
+    )}
+  </div>
+)}
+
       </motion.div>
     </div>
   );
