@@ -29,13 +29,12 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
 
   const links = [
     { name: "Dashboard", path: "/dashboard", icon: <Home size={20} /> },
-    { name: "Customers", path: "/contacts", icon: <Users size={20} /> },
     { name: "Send SMS", path: "/send", icon: <MessageSquare size={20} /> },
     { name: "Upload", path: "/upload", icon: <Upload size={20} /> },
     { name: "Contact Support", path: "/support", icon: <LifeBuoy size={20} /> }, 
     { name: "Pricing", path: "/pricing", icon: <CreditCard size={20} /> },
     { name: "Search Customers", path: "/elastic", icon: <Search size={20} /> },
-    { name: "Add Pricing", path: "/add-pricing", icon: <Search size={20} /> },
+    
 
 // ✅ new link
   ];
@@ -44,7 +43,9 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
   if (isAdmin) {
   links.push(
     { name: "Register User", path: "/register", icon: <UserPlus size={20} /> },
-    { name: "Manage Users", path: "/users", icon: <Users size={20} /> }
+    { name: "Manage Users", path: "/users", icon: <Users size={20} /> },
+    { name: "Customers", path: "/contacts", icon: <Users size={20} /> },
+    { name: "Add Pricing", path: "/add-pricing", icon: <Search size={20} /> }
   );
 }
 

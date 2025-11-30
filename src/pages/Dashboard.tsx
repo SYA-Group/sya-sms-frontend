@@ -185,7 +185,7 @@ const Dashboard = () => {
         <StatsCard title="Messages Sent" value={summary.sent} color="bg-green-600/80 hover:bg-green-700" icon="send" onClick={() => setFilterStatus("sent")} />
         <StatsCard title="Failed Messages" value={summary.failed} color="bg-red-600/80 hover:bg-red-700" icon="alert-triangle" onClick={() => setFilterStatus("failed")} />
         <StatsCard title="Pending Messages" value={summary.pending} color="bg-yellow-600/80 hover:bg-yellow-700" icon="clock" onClick={() => setFilterStatus("pending")} />
-        <StatsCard title="Resend All" value={summary.contacts_total} color="bg-purple-600/80 hover:bg-purple-700" icon="send" onClick={() => setShowConfirm(true)} />
+        <StatsCard title="Resend All" value={summary.sent} color="bg-purple-600/80 hover:bg-purple-700" icon="send" onClick={() => setShowConfirm(true)} />
       </motion.div>
 
       {/* Quota finished */}

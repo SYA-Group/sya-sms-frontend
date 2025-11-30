@@ -150,6 +150,17 @@ const Login = () => {
             Forgot Password?
           </Link>
         </div>
+
+          {/* Create Account → Go to Pricing Plans */}
+      <div className="mt-3 text-center">
+        <Link
+          to="/pricing#plans"
+          className="text-indigo-600 hover:underline dark:text-indigo-400 text-sm font-semibold"
+        >
+          Don’t have an account? View SMS Plans →
+        </Link>
+      </div>
+
       </motion.div>
     </div>
   );

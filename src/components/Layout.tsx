@@ -8,15 +8,19 @@ import Cookies from "js-cookie";
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // ⭐ CHECK ALL TOKEN LOCATIONS — local, session, cookies
-  const token =
-    localStorage.getItem("token") ||
-    sessionStorage.getItem("token") ||
-    Cookies.get("token");
-
-  // ---------------------------
-  // PUBLIC LAYOUT (no login)
-  // ---------------------------
+  const getToken = () => {
+    const t =
+      localStorage.getItem("token") ||
+      sessionStorage.getItem("token") ||
+      Cookies.get("token");
+  
+    if (!t) return null;
+    if (t === "null" || t === "undefined") return null;
+    return t;
+  };
+  
+  const token = Boolean(getToken());
+  
   if (!token) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-[#0f172a] text-gray-900 dark:text-gray-100">
@@ -34,12 +38,14 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             >
               Login
             </a>
+
+            {/* ⭐ FIX: Register goes to pricing plans */}
             <a
-            href="/pricing#plans"
-            className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
-          >
-            Register
-          </a>
+              href="/pricing#plans"
+              className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+            >
+              Register
+            </a>
           </div>
         </header>
 

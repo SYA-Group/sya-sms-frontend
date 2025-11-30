@@ -18,8 +18,22 @@ import ManageUsers from "./pages/ManageUsers";
 import Pricing from "./pages/Pricing";
 import ElasticSearch from "./pages/ElasticSearch";
 import PricingAdmin from "./pages/PricingAdmin";
+import LeadRegister from "./pages/LeadRegister";
+import Cookies from "js-cookie";
 const App = () => {
-  const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+  
+  const getToken = () => {
+    const t =
+      localStorage.getItem("token") ||
+      sessionStorage.getItem("token") ||
+      Cookies.get("token");
+  
+    if (!t) return null;
+    if (t === "null" || t === "undefined") return null;
+    return t;
+  };
+  
+  const token = Boolean(getToken());
   return (
     <BrowserRouter>
      <Toaster position="top-center" reverseOrder={false} />
@@ -38,7 +52,7 @@ const App = () => {
 
         {/* Public route */}
         <Route path="/login" element={<Login />} />
-        <Route path="/lead-register" element={<Login />} />
+        <Route path="/lead-register" element={<LeadRegister/>} />
        <Route path="/forgot-password" element={<ForgotPassword />} />
        <Route path="/reset-password/:token" element={<ResetPassword />} />
 

@@ -11,11 +11,12 @@ interface PricingCardProps {
   delay?: number;
   featured?: boolean;
 
-  // 🔵 NEW: Start Now callback
   onStart?: (data: {
     sender: string;
     sms_api_url: string;
     api_token: string;
+    price: string;
+    sms: string;
   }) => void;
 }
 
@@ -58,34 +59,16 @@ const PricingCard = ({
     >
       {featured && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-          <div
-            className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold
-            bg-yellow-400 text-gray-900 shadow-md"
-          >
-            <Star
-              size={14}
-              className="fill-yellow-500 text-yellow-700"
-            />
+          <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-yellow-400 text-gray-900 shadow-md">
+            <Star size={14} className="fill-yellow-500 text-yellow-700" />
             MOST POPULAR
           </div>
         </div>
       )}
 
-      <div
-        className="
-          rounded-3xl h-full bg-white/90 dark:bg-slate-900/70
-          backdrop-blur-xl px-7 pt-7 pb-6 flex flex-col justify-between
-        "
-      >
+      <div className="rounded-3xl h-full bg-white/90 dark:bg-slate-900/70 backdrop-blur-xl px-7 pt-7 pb-6 flex flex-col justify-between">
         <div className="mb-6 text-center">
-          <h3
-            className="
-              text-2xl sm:text-3xl font-extrabold tracking-tight
-              bg-gradient-to-r from-indigo-600 to-purple-500
-              dark:from-indigo-300 dark:to-purple-300
-              bg-clip-text text-transparent
-            "
-          >
+          <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-600 to-purple-500 dark:from-indigo-300 dark:to-purple-300 bg-clip-text text-transparent">
             EGP {price}
           </h3>
 
@@ -106,26 +89,18 @@ const PricingCard = ({
 
         <div className="space-y-3 mb-7 text-sm sm:text-base">
           {[senderIDs, apiIntegration, support].map((feature, idx) => (
-            <div
-              key={idx}
-              className="flex items-center gap-2 text-gray-700 dark:text-gray-200"
-            >
-              <CheckCircle
-                size={18}
-                className="text-emerald-500 dark:text-emerald-400"
-              />
+            <div key={idx} className="flex items-center gap-2 text-gray-700 dark:text-gray-200">
+              <CheckCircle size={18} className="text-emerald-500 dark:text-emerald-400" />
               <span>{feature}</span>
             </div>
           ))}
         </div>
 
-        {/* 🔵 Start Now button */}
         {onStart && (
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            className="w-full py-3 rounded-full font-semibold text-sm sm:text-base text-white shadow-lg
-              hover:shadow-xl transition-all duration-300"
+            className="w-full py-3 rounded-full font-semibold text-sm sm:text-base text-white shadow-lg hover:shadow-xl transition-all duration-300"
             style={{
               background: `linear-gradient(90deg, ${color} 0%, ${color}AA 100%)`,
             }}
@@ -134,6 +109,8 @@ const PricingCard = ({
                 sender: senderIDs,
                 sms_api_url: apiIntegration,
                 api_token: support,
+                price: price,
+                sms: sms
               })
             }
           >

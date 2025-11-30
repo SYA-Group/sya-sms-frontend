@@ -10,19 +10,27 @@ const api = axios.create({
 // 🔵 REQUEST INTERCEPTOR — attach access token
 // --------------------------------------------
 api.interceptors.request.use((config) => {
-  // ❌ Skip token for auth endpoints (login, register, refresh)
-  if (
-    config.url?.includes("/auth/login") ||
-    config.url?.includes("/auth/register")
-  ) {
+  const PUBLIC_ENDPOINTS = [
+    "auth/login",
+    "auth/register",
+    "support/lead",
+    "support/contact",
+    "pricing"
+  ];
+
+  const cleanUrl = (config.url || "").replace(/^\//, "");
+
+  // Public endpoints → DO NOT attach token
+  if (PUBLIC_ENDPOINTS.some((p) => cleanUrl.startsWith(p))) {
     return config;
   }
 
-  // Attach access token normally
+  // Attach token normally
   const token =
-    localStorage.getItem("token") || sessionStorage.getItem("token");
+    localStorage.getItem("token") ||
+    sessionStorage.getItem("token");
 
-  if (token) {
+  if (token && token !== "null" && token !== "undefined") {
     config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -41,6 +49,9 @@ const processQueue = (error: any, token: string | null) => {
   failedQueue = [];
 };
 
+// --------------------------------------------
+// 🔵 RESPONSE INTERCEPTOR — token refresh
+// --------------------------------------------
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -48,7 +59,7 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const url = originalRequest?.url || "";
 
-    // IMPORTANT: Skip refresh for all auth endpoints
+    // Skip refresh on auth endpoints
     if (
       url.includes("/auth/login") ||
       url.includes("/auth/register") ||
@@ -57,7 +68,7 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // If unauthorized AND this request has not retried yet
+    // Unauthorized → attempt refresh
     if (status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -77,7 +88,8 @@ api.interceptors.response.use(
           failedQueue.push({ resolve, reject });
         })
           .then((newToken) => {
-            originalRequest.headers["Authorization"] = "Bearer " + newToken;
+            originalRequest.headers["Authorization"] =
+              "Bearer " + newToken;
             return api(originalRequest);
           })
           .catch((err) => Promise.reject(err));
@@ -92,7 +104,6 @@ api.interceptors.response.use(
 
         const newAccessToken = res.data.access_token;
 
-        // Put the new token in correct storage
         if (localStorage.getItem("refresh_token")) {
           localStorage.setItem("token", newAccessToken);
         } else {
@@ -123,21 +134,20 @@ api.interceptors.response.use(
   }
 );
 
-// ---------- AUTH ----------
+// ----------------------------------------------------
+// API FUNCTIONS (unchanged) — everything works the same
+// ----------------------------------------------------
 
-// Login user
 export const login = async (username: string, password: string) => {
   const res = await api.post("/auth/login", { username, password });
   return res.data;
 };
 
-// Fetch logged-in user info
 export const getUserInfo = async () => {
   const res = await api.get("/auth/me");
   return res.data;
 };
 
-// Register new user
 export const registerUser = async (data: any) => {
   const payload = {
     ...data,
@@ -147,7 +157,6 @@ export const registerUser = async (data: any) => {
   return res.data;
 };
 
-// Change password
 export const changePassword = async (
   current_password: string,
   new_password: string
@@ -159,13 +168,11 @@ export const changePassword = async (
   return res.data;
 };
 
-// Forgot password
 export const forgotPassword = async (email: string) => {
   const res = await api.post("/auth/forgot-password", { email });
   return res.data;
 };
 
-// Reset password
 export const resetPassword = async (token: string, new_password: string) => {
   const res = await api.post(`/auth/reset-password/${token}`, {
     new_password,
@@ -173,13 +180,11 @@ export const resetPassword = async (token: string, new_password: string) => {
   return res.data;
 };
 
-// ---------- DASHBOARD ----------
 export const getDashboardStats = async () => {
   const res = await api.get("/dashboard/stats");
   return res.data;
 };
 
-// ---------- CONTACTS ----------
 export const getContacts = async () => {
   const res = await api.get("/contacts");
   return res.data;
@@ -195,7 +200,6 @@ export const addContact = async (data: { name: string; phone: string }) => {
   return res.data;
 };
 
-// ---------- SMS ----------
 export const sendBulkSMS = async (data: { message: string }) => {
   const res = await api.post("/sms/send", data);
   return res.data;
@@ -206,7 +210,6 @@ export const resendMessages = async (status: string) => {
   return res.data;
 };
 
-// ---------- UPLOAD ----------
 export const uploadContacts = async (file: File) => {
   const formData = new FormData();
   formData.append("file", file);
@@ -218,19 +221,16 @@ export const uploadContacts = async (file: File) => {
   return res.data;
 };
 
-// ---------- EMAIL ----------
 export const updateEmail = async (email: string) => {
   const res = await api.post("/auth/update-email", { email });
   return res.data;
 };
 
-// ---------- SUPPORT ----------
 export const sendSupportMessage = async (data: { message: string }) => {
   const res = await api.post("/support/contact", data);
   return res.data;
 };
 
-// ---------- USERS ----------
 export const getUsers = async () => {
   const res = await api.get("/users/list");
   return res.data;
@@ -241,15 +241,7 @@ export const getUser = async (id: number) => {
   return res.data;
 };
 
-export const updateUser = async (
-  id: number,
-  data: {
-    email?: string;
-    sms_quota?: number;
-    is_admin?: number;
-    company_type?: string;
-  }
-) => {
+export const updateUser = async (id: number, data: any) => {
   const res = await api.put(`/users/${id}`, data);
   return res.data;
 };
@@ -265,8 +257,6 @@ export const deleteUser = async (id: number) => {
 export const suspendUser = (id: number, suspended: boolean) =>
   api.put(`/users/${id}/suspend`, { suspended });
 
-// ---------- PRICING ----------
-// IMPORTANT: NO TRAILING SLASH (fixes OPTIONS preflight error)
 export const getPricing = async () => {
   const res = await api.get("/pricing");
   return res.data;
@@ -282,7 +272,6 @@ export const deletePricing = async (id: number) => {
   return res.data;
 };
 
-// ---------- SEARCH COUNT ----------
 export const searchCount = async (
   query: string,
   governorate?: string,
@@ -317,7 +306,6 @@ export const searchCount = async (
   return res.data;
 };
 
-// ---------- SEARCH PREVIEW ----------
 export const searchPreview = async (
   query: string,
   limit: number = 20,
@@ -354,24 +342,7 @@ export const searchPreview = async (
   return res.data;
 };
 
-// ---------- SEND SEARCH SMS ----------
-export const sendSearchSMS = async (data: {
-  query: string;
-  sms_text: string;
-  limit: number;
-  save_to_customers: boolean;
-  governorate?: string;
-  gender?: string;
-  birthdate?: string;
-  phone_key?: string;
-  city?: string;
-  address?: string;
-  work?: string;
-  studied?: string;
-  religion?: string;
-  relation?: string;
-  job?: string;
-}) => {
+export const sendSearchSMS = async (data: any) => {
   const res = await api.post("/search/send", data);
   return res.data;
 };
@@ -391,7 +362,6 @@ export const deletePricingPlan = async (id: number) => {
   return res.data;
 };
 
-// ---------- SEARCH SMS PROGRESS ----------
 export const getSmsProgress = async () => {
   const res = await api.get("/search/progress");
   return res.data;
@@ -403,7 +373,8 @@ export const getUnreadNotifications = () =>
 export const markNotificationsRead = () =>
   api.post("/notifications/mark_all_read");
 
-
-
+export const sendLeadMessage = async (data: any) => {
+  return api.post("/support/lead", data);
+};
 
 export default api;
