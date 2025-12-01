@@ -377,4 +377,11 @@ export const sendLeadMessage = async (data: any) => {
   return api.post("/support/lead", data);
 };
 
+
+
+export const topupSMS = async (userId: number, amount: number) => {
+  const res = await api.post(`/users/${userId}/topup`, { amount });
+  return res.data;
+};
+
 export default api;

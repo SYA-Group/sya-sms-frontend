@@ -201,23 +201,22 @@ const Register = () => {
 
         {/* SMS Quota */}
         <div>
-          <label className="block text-gray-700 dark:text-gray-300 font-medium">
-            SMS Quota
-          </label>
-          <select
-            name="sms_quota"
-            value={form.sms_quota}
-            onChange={(e) =>
-              setForm({ ...form, sms_quota: parseInt(e.target.value) })
-            }
-            className="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none"
-          >
-            <option value={5000}>5,000</option>
-            <option value={10000}>10,000</option>
-            <option value={50000}>50,000</option>
-            <option value={100000}>100,000</option>
-          </select>
-        </div>
+  <label className="block text-gray-700 dark:text-gray-300 font-medium">
+    SMS Quota
+  </label>
+
+  <input
+    type="number"
+    name="sms_quota"
+    placeholder="Enter SMS quota (e.g., 100000)"
+    value={form.sms_quota}
+    onChange={(e) =>
+      setForm({ ...form, sms_quota: Number(e.target.value) })
+    }
+    className="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none"
+  />
+</div>
+
 
         <motion.button
           whileTap={{ scale: 0.97 }}

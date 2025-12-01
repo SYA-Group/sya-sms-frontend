@@ -19,6 +19,7 @@ import {
   deleteUser,
   resetUserPassword,
   suspendUser,
+  topupSMS,
 } from "../api";
 
 interface User {
@@ -48,6 +49,9 @@ const ManageUsers = () => {
   const [newPassword, setNewPassword] = useState("");
   const [sortField, setSortField] = useState<keyof User>("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [showTopupModal, setShowTopupModal] = useState<number | null>(null);
+  const [topupAmount, setTopupAmount] = useState("");
+
 
   const loadUsers = async () => {
     setLoading(true);
@@ -369,6 +373,16 @@ const ManageUsers = () => {
                       ) : (
                         `${u.sms_quota}`
                       )}
+                      <button
+                      onClick={() => setShowTopupModal(u.id)}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg transition m-3"
+                      title="Top-up SMS"
+                    >
+                      + SMS
+                    </button>
+
+
+
                     </td>
 
                     {/* Admin */}
@@ -490,6 +504,69 @@ const ManageUsers = () => {
           </div>
         </div>
       )}
+
+{showTopupModal && (
+  <div className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-50">
+    <motion.div
+      initial={{ scale: 0.8, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.25 }}
+      className="bg-white dark:bg-gray-800 p-6 rounded-2xl w-[90%] max-w-md shadow-xl"
+    >
+      <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-white">
+        Add SMS Units
+      </h2>
+
+      <input
+        type="number"
+        placeholder="Enter SMS amount"
+        value={topupAmount}
+        onChange={(e) => setTopupAmount(e.target.value)}
+        className="w-full p-3 mb-4 border rounded-lg dark:bg-gray-700 dark:text-gray-100"
+      />
+
+      <div className="flex justify-end gap-3">
+        <button
+          onClick={() => {
+            setShowTopupModal(null);
+            setTopupAmount("");
+          }}
+          className="px-4 py-2 rounded-lg bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-400 dark:hover:bg-gray-600"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={async () => {
+            const amount = Number(topupAmount);
+            if (!amount || amount <= 0) {
+              return toast.error("Enter a valid amount");
+            }
+
+            try {
+              await topupSMS(showTopupModal, Number(topupAmount));
+            
+              // Optional: nice success popup
+              toast.success(`Added ${topupAmount} SMS units`, {
+                style: { fontSize: "20px", padding: "16px" }
+              });
+            
+              setShowTopupModal(null);
+              setTopupAmount("");
+              loadUsers();
+            } catch {
+              toast.error("Failed to top up SMS");
+            }
+            
+          }}
+          className="px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium"
+        >
+          Add
+        </button>
+      </div>
+    </motion.div>
+  </div>
+)}
     </div>
   );
 };
