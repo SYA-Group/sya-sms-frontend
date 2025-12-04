@@ -20,6 +20,7 @@ import ElasticSearch from "./pages/ElasticSearch";
 import PricingAdmin from "./pages/PricingAdmin";
 import LeadRegister from "./pages/LeadRegister";
 import Cookies from "js-cookie";
+import Suspended from "./pages/suspended";
 const App = () => {
   
   const getToken = () => {
@@ -55,6 +56,7 @@ const App = () => {
         <Route path="/lead-register" element={<LeadRegister/>} />
        <Route path="/forgot-password" element={<ForgotPassword />} />
        <Route path="/reset-password/:token" element={<ResetPassword />} />
+       <Route path="/suspended" element={<Suspended />} />
 
         {/* Protected routes inside Layout */}
         <Route

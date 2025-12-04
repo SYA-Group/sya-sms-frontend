@@ -293,7 +293,7 @@ const ManageUsers = () => {
                     <td className="p-4 font-semibold text-gray-900 dark:text-gray-100">
                       {editingUser?.id === u.id ? (
                         <input
-                          value={editingUser.username}
+                          value={editingUser.username} readOnly
                           onChange={(e) =>
                             setEditingUser({
                               ...editingUser,

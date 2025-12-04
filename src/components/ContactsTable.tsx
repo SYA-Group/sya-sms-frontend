@@ -19,7 +19,7 @@ interface Contact {
   date_added: string;
 }
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 10;
 
 const ContactTable = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -47,7 +47,8 @@ const ContactTable = () => {
         }
       }
 
-      const res = await getContacts();
+      const res = await getContacts({ page, limit: 50 });
+
       setContacts(res);
       setVisibleContacts(res.slice(0, PAGE_SIZE));
       setPage(1);
@@ -65,8 +66,6 @@ const ContactTable = () => {
 
   useEffect(() => {
     loadContacts();
-    const interval = setInterval(() => loadContacts(true), 10000);
-    return () => clearInterval(interval);
   }, []);
 
   // ✅ Filter & sort logic

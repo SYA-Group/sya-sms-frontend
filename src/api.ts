@@ -20,6 +20,8 @@ api.interceptors.request.use((config) => {
 
   const cleanUrl = (config.url || "").replace(/^\//, "");
 
+  
+
   // Public endpoints → DO NOT attach token
   if (PUBLIC_ENDPOINTS.some((p) => cleanUrl.startsWith(p))) {
     return config;
@@ -58,6 +60,39 @@ api.interceptors.response.use(
     const originalRequest = error.config;
     const status = error.response?.status;
     const url = originalRequest?.url || "";
+        // ----------------------------------------------------
+    // 🔴 SUSPENDED USER HANDLING
+    // ----------------------------------------------------
+    const suspended =
+      status === 403 &&
+      (
+        error.response?.data?.error?.toLowerCase().includes("suspended") ||
+        error.response?.data?.error === "Account suspended"
+      );
+
+    if (suspended) {
+      // 1️⃣ Remove tokens
+      localStorage.removeItem("token");
+      localStorage.removeItem("refresh_token");
+      sessionStorage.clear();
+
+      // 2️⃣ Clear cookies
+      document.cookie.split(";").forEach((c) => {
+        document.cookie =
+          c.replace(/^ +/, "")
+            .replace(/=.*/, "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/");
+      });
+
+      // 3️⃣ Clear cache
+      if ("caches" in window) {
+        caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
+      }
+
+      // 4️⃣ Redirect to suspended page
+      window.location.href = "/suspended";
+      return;
+    }
+
 
     // Skip refresh on auth endpoints
     if (
@@ -185,10 +220,11 @@ export const getDashboardStats = async () => {
   return res.data;
 };
 
-export const getContacts = async () => {
-  const res = await api.get("/contacts");
+export const getContacts = async ({ page = 1, limit = 50 }) => {
+  const res = await api.get(`/contacts?page=${page}&limit=${limit}`);
   return res.data;
 };
+
 
 export const deleteContact = async (id: number) => {
   const res = await api.delete(`/contacts/${id}`);
@@ -383,5 +419,18 @@ export const topupSMS = async (userId: number, amount: number) => {
   const res = await api.post(`/users/${userId}/topup`, { amount });
   return res.data;
 };
+export const getUploadedContacts = async () => {
+  const res = await api.get("/upload/contacts");
+  return res.data;
+};
+
+// ADD CONTACT INTO uploaded_contact TABLE
+export const addUploadedContact = async (data: { name: string; phone: string }) => {
+  const res = await api.post("upload/add", data);
+  return res.data;
+};
+
+
+
 
 export default api;
