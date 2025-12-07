@@ -20,7 +20,7 @@ import ElasticSearch from "./pages/ElasticSearch";
 import PricingAdmin from "./pages/PricingAdmin";
 import LeadRegister from "./pages/LeadRegister";
 import Cookies from "js-cookie";
-import Suspended from "./pages/suspended";
+import Suspended from "./pages/Suspended";
 const App = () => {
   
   const getToken = () => {
