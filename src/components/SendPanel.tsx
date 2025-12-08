@@ -30,6 +30,28 @@ const SendPanel = () => {
     }
   };
 
+  const fetchSendingState = async () => {
+    try {
+      const res = await api.get("/sms/state");
+  
+      if (res.data.sms_sending) {
+        setIsActive(true);
+        setStatusType("info");
+        setStatus("SMS sending is already running...");
+        startPollingProgress();
+      } else {
+        setIsActive(false);
+      }
+    } catch (err) {
+      console.error("Failed to fetch SMS sending state:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchSendingState();
+  }, []);
+  
+
   /** ------------------------------
    *  Start polling progress
    *  ------------------------------ */

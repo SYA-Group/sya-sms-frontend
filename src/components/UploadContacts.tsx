@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { addUploadedContact, exportUploadedContacts, getUploadedContacts, getUploadSMSProgress, sendUploadSMS, stopUploadSMS, uploadContacts } from "../api";
+import { addUploadedContact, exportUploadedContacts, getTimeLineData, getUploadedContacts, getUploadSMSProgress, resendAllUploadedContacts, sendUploadSMS, stopUploadSMS, uploadContacts } from "../api";
 import { motion } from "framer-motion";
 import { useTheme } from "../context/ThemeContext";
 import { Search, RefreshCcw, ArrowUpDown, Plus } from "lucide-react";
@@ -104,6 +104,9 @@ const UploadContact = () => {
   const [sortField, setSortField] = useState<"phone" | "status">("phone");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
+  const [showResendConfirm, setShowResendConfirm] = useState(false);
+  const [isResendingAll, setIsResendingAll] = useState(false);
+
   // ================== UPLOAD SMS STATE ==================
 const [smsMessage, setSmsMessage] = useState("");
 const [smsSending, setSmsSending] = useState(false);
@@ -114,21 +117,21 @@ const [smsProgress, setSmsProgress] = useState({
 });
 
 
-const timelineData = Object.values(
-  report.rows.reduce((acc: any, row) => {
-    if (row.status !== "sent" || !row.created_at) return acc;
+const [timelineData, setTimelineData] = useState([]);
 
-    const hour = new Intl.DateTimeFormat("en-US", {
-      timeZone: "Africa/Cairo",
-      hour: "numeric",
-      hour12: true,
-    }).format(new Date(row.created_at));
+useEffect(() => {
+  const loadTimeline = async () => {
+    try {
+      const data = await getTimeLineData()
+      setTimelineData(data);
+    } catch (e) {
+      console.error("Timeline load failed");
+    }
+  };
 
-    acc[hour] = acc[hour] || { hour, count: 0 };
-    acc[hour].count += 1;
-    return acc;
-  }, {})
-);
+  loadTimeline();
+}, []);
+
 
 
   const handleUpload = async () => {
@@ -302,13 +305,52 @@ const timelineData = Object.values(
   useEffect(() => {
     if (!smsSending) return;
   
-    const interval = setInterval(() => {
-      refreshUploaded();
-    }, 3000); // every 3 seconds
+    const t = setInterval(async () => {
+      const res = await getUploadSMSProgress();
   
-    return () => clearInterval(interval);
+      setSmsProgress(res);
+  
+      if (res.status !== "sending") {
+        setSmsSending(false); // ✅ auto unlock UI
+        clearInterval(t);
+      }
+    }, 2000);
+  
+    return () => clearInterval(t);
   }, [smsSending]);
   
+  
+  useEffect(() => {
+    let mounted = true;
+  
+    const hydrateSendingState = async () => {
+      try {
+        const res = await getUploadSMSProgress();
+  
+        if (!mounted) return;
+  
+        if (res.status === "sending") {
+          setSmsSending(true);
+          setSmsProgress({
+            sent: res.sent,
+            failed: res.failed,
+            units_used: res.units_used,
+          });
+        } else {
+          setSmsSending(false);
+        }
+  
+      } catch (e) {
+        console.warn("Could not hydrate upload SMS state");
+      }
+    };
+  
+    hydrateSendingState();
+  
+    return () => {
+      mounted = false;
+    };
+  }, []);
   
 
   const handleExportCSV = async () => {
@@ -346,6 +388,19 @@ const timelineData = Object.values(
   };
   
   
+  const handleResendAllUploaded = async () => {
+    setIsResendingAll(true);
+    try {
+      const res = await resendAllUploadedContacts();
+      toast.success(res.message || "All contacts reset to pending");
+      refreshUploaded();
+    } catch {
+      toast.error("Failed to reset contacts");
+    } finally {
+      setIsResendingAll(false);
+      setShowResendConfirm(false);
+    }
+  };
   
 
   // ADD CONTACT MANUALLY
@@ -499,7 +554,7 @@ const timelineData = Object.values(
   <h3 className="font-semibold mb-4">Delivery Status Distribution</h3>
   <ResponsiveContainer width="100%" height={200}>
     <PieChart>
-      <Pie data={statusData} dataKey="value" outerRadius={90} label>
+      <Pie data={statusData} dataKey="value" outerRadius={60} label>
         <Cell fill="#16a34a" /> {/* Sent */}
         <Cell fill="#dc2626" /> {/* Failed */}
         <Cell fill="#eab308" /> {/* Pending */}
@@ -514,7 +569,12 @@ const timelineData = Object.values(
   <h3 className="font-semibold mb-4">Messages Sent Over Time (Cairo)</h3>
   <ResponsiveContainer width="100%" height={200}>
     <BarChart data={timelineData}>
-      <XAxis dataKey="hour" />
+      <XAxis dataKey="day" tickFormatter={(d) =>
+    new Date(d).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    })
+  } />
       <YAxis />
       <Tooltip />
       <Bar dataKey="count" fill="#2563eb" />
@@ -566,6 +626,13 @@ const timelineData = Object.values(
           >
             <RefreshCcw size={18} /> Refresh
           </button>
+          <button
+  onClick={() => setShowResendConfirm(true)}
+  className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-xl"
+>
+  🔁 Resend All
+</button>
+
         </div>
       </div>
 
@@ -800,6 +867,63 @@ const timelineData = Object.values(
           </motion.div>
         </div>
       )}
+      {showResendConfirm && (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50"
+  >
+    <motion.div
+      initial={{ scale: 0.9, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      className={`rounded-2xl shadow-xl p-6 w-[90%] max-w-md border text-center ${
+        darkMode
+          ? "bg-slate-900 border-slate-700 text-gray-100"
+          : "bg-white border-gray-200 text-gray-900"
+      }`}
+    >
+      <h3 className="text-2xl font-bold mb-4">
+        Confirm Resend
+      </h3>
+
+      <p className="text-base mb-6">
+        This will reset <span className="font-semibold text-purple-500">
+          ALL uploaded contacts
+        </span> to <b>Pending</b>.
+        <br />
+        Messages will NOT be sent until you press <b>Start Sending</b>.
+      </p>
+
+      <div className="flex justify-center gap-4">
+        <button
+          onClick={() => setShowResendConfirm(false)}
+          disabled={isResendingAll}
+          className={`px-5 py-2 rounded-lg font-medium ${
+            darkMode
+              ? "bg-slate-700 hover:bg-slate-600"
+              : "bg-gray-200 hover:bg-gray-300"
+          }`}
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={handleResendAllUploaded}
+          disabled={isResendingAll}
+          className={`px-6 py-2 rounded-lg font-semibold text-white shadow ${
+            isResendingAll
+              ? "bg-purple-400 cursor-wait"
+              : "bg-purple-600 hover:bg-purple-700"
+          }`}
+        >
+          {isResendingAll ? "Resetting..." : "Yes, Reset All"}
+        </button>
+      </div>
+    </motion.div>
+  </motion.div>
+)}
+
     </div>
   );
 };

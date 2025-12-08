@@ -169,11 +169,15 @@ const Headers = ({ toggleSidebar, onRefreshUser }: HeaderProps) => {
 
           {/* 🔔 Notifications */}
           <button
-            onClick={() => {
-              setNotifOpen(!notifOpen);
-              markNotificationsRead();
-              setNotifications([]);
+            onClick={async () => {
+              if (!notifOpen && notifications.length > 0) {
+                try {
+                  await markNotificationsRead();
+                } catch {}
+              }
+              setNotifOpen((v) => !v);
             }}
+            
             className="relative hover:text-blue-600 dark:hover:text-white"
           >
             <Bell size={18} />

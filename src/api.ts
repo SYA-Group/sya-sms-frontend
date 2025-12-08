@@ -462,7 +462,7 @@ export const getUploadSMSProgress = async () => {
 };
 
 export const sendLeadSupportMessage = (data: any) =>
-  axios.post("/api/support/lead", data);
+  api.post("/support/lead", data);
 
 export const exportUploadedContacts = async (status?: string) => {
   const params = new URLSearchParams();
@@ -474,6 +474,16 @@ export const exportUploadedContacts = async (status?: string) => {
   return res.data.rows;
 };
 
+
+export const getTimeLineData = async () =>{
+  const res = await api.get("/upload/stats/timeline");
+  return res.data;
+}
+
+export const resendAllUploadedContacts = async () => {
+  const res = await api.post("/upload/contacts/resend-all");
+  return res.data;
+};
 
 
 export default api;

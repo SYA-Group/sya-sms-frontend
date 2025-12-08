@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import { useTheme } from "../context/ThemeContext";
 import PricingCard from "../components/PricingCard";
@@ -20,6 +20,7 @@ const Pricing = () => {
   const { darkMode } = useTheme();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   // ⭐ message popup
   const [popup, setPopup] = useState<{ planId: number; text: string } | null>(null);
@@ -34,6 +35,8 @@ const Pricing = () => {
     if (!t || t === "null" || t === "undefined") return null;
     return t;
   };
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 
   const isLoggedIn = Boolean(getToken());
 
@@ -55,7 +58,7 @@ const Pricing = () => {
   const handleStartNow = async (data: any) => {
     try {
       if (!isLoggedIn) {
-        // ✅ Anonymous → send lead
+        // ✅ Send lead (initial ping)
         await sendLeadSupportMessage({
           name: "Pricing Page Lead",
           phone: "N/A",
@@ -67,8 +70,23 @@ const Pricing = () => {
           api: data.apiIntegration,
           token: "N/A",
         });
-  
-      } else {
+        setPopup({
+          planId: data.id,
+          text: "✅ Great choice! Redirecting to complete registration…",
+        });
+        await sleep(1300)
+        // ✅ Redirect to register WITH plan data
+        navigate(
+          `/lead-register?price=${encodeURIComponent(data.price)}
+          &sms=${encodeURIComponent(data.sms)}
+          &sender=${encodeURIComponent(data.senderIDs)}
+          &api=${encodeURIComponent(data.apiIntegration)}
+          &token=N/A`
+        );
+      
+        return; // ⛔ stop further execution
+      }
+       else {
         // ✅ Logged-in → authenticated support
         const user = await getUserInfo();
         const username = user?.username || "Unknown User";
@@ -203,12 +221,13 @@ const Pricing = () => {
                     className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm rounded-3xl z-20"
                   >
                     <div className="bg-white text-green-700 rounded-2xl px-6 py-4 shadow-xl font-bold text-lg">
-                      ✔️ {popup.text}
+                       {popup.text}
                     </div>
                   </motion.div>
                 )}
 
                 <PricingCard
+                id ={plan.id}
                   price={plan.price}
                   sms={plan.sms_amount}
                   color={plan.color}

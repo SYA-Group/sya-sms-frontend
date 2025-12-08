@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { CheckCircle, Star } from "lucide-react";
 
 interface PricingCardProps {
+  id: number; 
   price: string;
   sms: string;
   color: string;
@@ -12,6 +13,7 @@ interface PricingCardProps {
   featured?: boolean;
 
   onStart?: (data: {
+    id:number
     sender: string;
     sms_api_url: string;
     api_token: string;
@@ -29,6 +31,7 @@ const parseNumber = (value: string): number | null => {
 };
 
 const PricingCard = ({
+  id,
   price,
   sms,
   color,
@@ -106,6 +109,7 @@ const PricingCard = ({
             }}
             onClick={() =>
               onStart({
+                id,
                 sender: senderIDs,
                 sms_api_url: apiIntegration,
                 api_token: support,
