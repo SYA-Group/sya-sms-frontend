@@ -68,7 +68,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
           <h1 className="font-bold text-lg text-blue-600 dark:text-blue-400">
-           Profile SMS System
+           Profile SMS
           </h1>
           <button
             onClick={() => setOpen(false)}
@@ -103,7 +103,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
         </nav>
 
         <div className="p-4 text-xs text-gray-500 dark:text-gray-400 text-center">
-          © 2025 Profile SMS System
+          © 2025 Profile SMS System 
         </div>
       </motion.aside>
     </>
